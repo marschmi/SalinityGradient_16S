@@ -1,0 +1,19 @@
+[2025-02-26 15:14:23,269] multiqc                                            [DEBUG  ]  This is MultiQC v1.15
+[2025-02-26 15:14:23,270] multiqc                                            [DEBUG  ]  Command used: /programs/multiqc-1.15/bin/multiqc fastqc_reports/ -o multiqc_results/
+[2025-02-26 15:14:23,729] multiqc                                            [WARNING]  MultiQC Version v1.27 now available!
+[2025-02-26 15:14:23,730] multiqc                                            [DEBUG  ]  Working dir : /local/workdir/mls528/SalinityGradient_16S/analysis/00_FastQC
+[2025-02-26 15:14:23,730] multiqc                                            [DEBUG  ]  Template    : default
+[2025-02-26 15:14:23,730] multiqc                                            [DEBUG  ]  Running Python 3.9.18 (main, Aug 23 2024, 00:00:00)  [GCC 11.4.1 20231218 (Red Hat 11.4.1-3)]
+[2025-02-26 15:14:23,731] multiqc                                            [DEBUG  ]  Analysing modules: custom_content, ccs, ngsderive, purple, conpair, lima, peddy, somalier, methylQA, mosdepth, phantompeakqualtools, qualimap, preseq, hifiasm, quast, qorts, rna_seqc, rockhopper, rsem, rseqc, busco, bustools, goleft_indexcov, gffcompare, disambiguate, supernova, deeptools, sargasso, verifybamid, mirtrace, happy, mirtop, sambamba, gopeaks, homer, hops, macs2, theta2, snpeff, gatk, htseq, bcftools, featureCounts, fgbio, dragen, dragen_fastqc, dedup, pbmarkdup, damageprofiler, biobambam2, jcvi, mtnucratio, picard, vep, sentieon, prokka, qc3C, nanostat, samblaster, samtools, sexdeterrmine, eigenstratdatabasetools, bamtools, jellyfish, vcftools, longranger, stacks, varscan2, snippy, umitools, bbmap, bismark, biscuit, diamond, hicexplorer, hicup, hicpro, salmon, kallisto, slamdunk, star, hisat2, tophat, bowtie2, bowtie1, cellranger, snpsplit, odgi, pangolin, nextclade, humid, kat, leehom, librarian, adapterRemoval, bbduk, clipandmerge, cutadapt, flexbar, kaiju, kraken, malt, motus, trimmomatic, sickle, skewer, sortmerna, biobloomtools, fastq_screen, afterqc, fastp, fastqc, filtlong, prinseqplusplus, pychopper, porechop, pycoqc, minionqc, anglerfish, multivcfanalyzer, clusterflow, checkqc, bcl2fastq, bclconvert, interop, ivar, flash, seqyclean, optitype, whatshap
+[2025-02-26 15:14:23,731] multiqc                                            [DEBUG  ]  Using temporary directory for creating report: /tmp/tmpf62jj_0h
+[2025-02-26 15:14:24,267] multiqc                                            [INFO   ]  Search path : /local/workdir/mls528/SalinityGradient_16S/analysis/00_FastQC/fastqc_reports
+[2025-02-26 15:14:26,556] multiqc                                            [DEBUG  ]  Summary of files that were skipped by the search: [skipped_module_specific_max_filesize: 2112] // [skipped_no_match: 192]
+[2025-02-26 15:14:32,067] multiqc.plots.bargraph                             [DEBUG  ]  Using matplotlib version 3.7.1
+[2025-02-26 15:14:32,070] multiqc.plots.linegraph                            [DEBUG  ]  Using matplotlib version 3.7.1
+[2025-02-26 15:14:32,072] multiqc                                            [DEBUG  ]  No samples found: custom_content
+[2025-02-26 15:14:32,510] multiqc.modules.fastqc.fastqc                      [INFO   ]  Found 192 reports
+[2025-02-26 15:14:41,854] multiqc                                            [DEBUG  ]  Compressing plot data
+[2025-02-26 15:14:42,015] multiqc                                            [INFO   ]  Report      : multiqc_results/multiqc_report.html
+[2025-02-26 15:14:42,015] multiqc                                            [INFO   ]  Data        : multiqc_results/multiqc_data
+[2025-02-26 15:14:42,015] multiqc                                            [DEBUG  ]  Moving data file from '/tmp/tmpf62jj_0h/multiqc_data' to 'multiqc_results/multiqc_data'
+[2025-02-26 15:14:42,151] multiqc                                            [INFO   ]  MultiQC complete
