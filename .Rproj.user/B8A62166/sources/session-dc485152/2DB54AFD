@@ -1,0 +1,27 @@
+{
+    "id": "2DB54AFD",
+    "path": "/local/workdir/mls528/SalinityGradient_16S/analysis/01_DADA2.Rmd",
+    "project_path": "analysis/01_DADA2.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1740000178547.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "30,29",
+        "scrollLine": "16"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1740000729,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1740000729274,
+    "read_only": false,
+    "read_only_alternatives": []
+}

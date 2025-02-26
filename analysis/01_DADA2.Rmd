@@ -1,0 +1,40 @@
+---
+title: "Assigning ASVs with DADA2"
+author: "Marian Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = "center",
+                      fig.path = "../figures/01_DADA2")
+```
+
+
+# Symbolically Link our data files 
+
+We need to have access to our fastq files for our project! 
+
+
+# Goals of this file: 
+
+1. Load in raw sequencing data. 
+2. Visualize and inspect sequencing data to assess the quality of the sequencing reads. 
+3. Filter by quality and trim primers from sequencing data. 
+4. Write out new fastq files that include high quality and trimmed sequences. 
+5. Re-inspect the quality of the reads. (Intuition check)
+6. Infer the error rate on the forward (R1) and reverse (R2) reads. **DADA2 building the error model.**
+7. Apply the error model and infer ASVs on forward and reverse reads individually. 
+8. Merge forward and reverse ASVs into "contiguous ASVs". 
+9. Generate an ASV count table (`otu_table` for phyloseq.)
+
+Output that we need: 
+
+1. ASV count table: `otu_table`
+2. 
+3. 
+
+
+
