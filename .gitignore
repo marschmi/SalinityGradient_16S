@@ -1,3 +1,5 @@
 *.fastq.gz
 */*.fastq.gz
 */*/*.fastq.gz
+.Rproj.user
+.Rproj.user/**
