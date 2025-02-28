@@ -357,7 +357,7 @@ To further confirm that things look ok, let's take a look at the read retention 
 
 ## Read Retention Post-QC
 
-```{r filterTrim-stats, message = FALSE, fig.height = 3.5, fig.width=8}
+```{r filterTrim-stats, message = FALSE, fig.height = 2.5, fig.width=8}
 # Make output into dataframe 
 filtered_df <- as.data.frame(filtered_reads) %>%
   mutate(percent.retained = reads.out/reads.in)
