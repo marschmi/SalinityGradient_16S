@@ -22,7 +22,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
-                      fig.path = "../figures/01_DADA2/") # send any figure output to this folder 
+                      fig.path = "../figures/01_QualityTrimming/") # send any figure output to this folder 
 ```
 
 # Goals of this file 
