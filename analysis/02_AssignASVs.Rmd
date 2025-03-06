@@ -230,13 +230,11 @@ merged_ASVs <-
 # Evaluate the data output 
 typeof(merged_ASVs) # A list
 length(merged_ASVs) # Length of the number of samples!
-names(merged_ASVs) # Here, we can access our current sample names
+head(names(merged_ASVs)) # Here, we can access our current sample names
 
 # Inspect further for each sample
-head(merged_ASVs) # A dataframe for each sample
-# We have a dataframe in each part of our list! 
-str(merged_ASVs$`20210602-MA-CEB1W_R1_filtered.fastq.gz`)
-# What are in the columns? 
+#head(merged_ASVs, n = 2) # A dataframe for each sample
+# We have a dataframe in each part of our list! What are in the columns? 
 glimpse(merged_ASVs$`20210602-MA-CEB1W_R1_filtered.fastq.gz`)
 ```
 
@@ -257,8 +255,6 @@ class(raw_ASV_table)
 write.table(raw_ASV_table, file = "data/01_DADA2/raw_ASV_counts.tsv",
             sep = "\t", quote = FALSE, col.names = NA)
 ```
-
-# Assess the ASV Length 
 
 # Assess ASV Quality 
 
@@ -283,9 +279,9 @@ Here, we have sequenced the 16S rRNA V4 hypervariable region with the 515F and 8
     - `252 - 8 = 244`
 4. *What is the overlap between our forward and reverse reads?*
     - We performed 2x250 paired-end Illumina MiSeq Sequencing. However, from our multiQC report, we can see that our read length is actually 251 bp. 
-    - Length of unique forward ASV sequence: `251 - 19 = 232`
-    - Length of unique reverse ASV sequence: `251 - 20 = 231`
-    - If we have a total read length of 252 base pairs, then our overlap will be `232/251 = 0.924` or 92.4% between our forward and reverse ASVs. 
+    - If we have a total read length of 251 base pairs and **we did not sequence our primers** (because we used the Kozich et al., 2013 AEM library preparation), then our overlap should be ~100%. 
+    
+<span style="color: red;">INTERPRETATION #1 of ASV Lengths: Here, in this location of your analyses, please insert a description, similar to the statements above, of your hypotheses of your expected ASV length. Please provide a clear explanation using information on the sequence strategy (e.g. 2x250 Ilummina MiSeq), primer information (e.g., length of primers), library preparation information (e.g., are the primers sequenced? length of amplicon?), and how your filterAndTrim() parameters might have modified the length of your ASVs.</span>
 
 ### ASV Length Stats 
 
@@ -307,14 +303,16 @@ medianLength_ASV <- median(nchar(getSequences(raw_ASV_table)))
 table(nchar(getSequences(raw_ASV_table)))
 ```
 
-In the table above, we can see that we actually have quite the ASV sequence length distribution! There are some longer ASVs that are clearly spurious... we need to be **skeptical**! Here's some of the stats that we've calculated:
+In the table above, we can see that we actually have quite the ASV sequence length distribution! There are some longer ASVs that are clearly spurious... we need to be **skeptical**! We see that the most abundant ASV length is 245, which has order an of magnitude more ASVs than compared to any other length. Since the difference in ASV abundance at 245 is so much higher than any other ASV length, we will remove ASVs that are not 245 bp. 
+
+Here's some of the stats that we've calculated:
 
 - Max ASV length: `r maxLength_ASV` base pairs
 - Min ASV length: `r minLength_ASV` base pairs
 - Mean ASV length: `r meanLength_ASV` base pairs
 - Median ASV length: `r medianLength_ASV` base pairs
 
-*Let's take a look at what this looks like graphically!*
+However, the median length actually is about what we are expecting, which is great. *Let's take a look at what this looks like graphically!*
 
 ### ASV Length Plot 
 
@@ -323,16 +321,26 @@ Now, we will plot these ASV lengths to give us a better idea:
 ```{r ASV-lengths-plot}
 # Inspect the distribution of sequence lengths of all ASVs in data set 
 # AFTER TRIM
-data.frame(Seq_Length = nchar(getSequences(raw_ASV_table))) %>%
+plot_ASVLength_raw <- 
+  data.frame(Seq_Length = nchar(getSequences(raw_ASV_table))) %>%
   ggplot(aes(x = Seq_Length )) + 
   geom_histogram() + 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Raw distribution of ASV length",
+  labs(title = "Raw",
        y = "Number of ASVs", x = "ASV Sequence Length (bps)")
+
+# Show the plot
+plot_ASVLength_raw
 ```
 
 As we saw in the table, the length of the ASVs is mostly 245 base pairs. 
+
+<span style="color: red;">INTERPRETATION #2 of ASV Lengths: Here, in this location of your analyses, please insert a description of the interpretation you draw regarding the lengths of your ASVs that you've inferred from the ASV length table function above and it's graphical visualization above. Do these results match with what you stated in INTERPREATAION #1?</span>
+
+***
+
+<span style="color: red;">INTERPRETATION #3 of ASV Lengths: Based on the data from the ASV length table and your answer above in INTERPRETATION #2, what is your suggested trimming procedure for your ASV lengths? Will you allow some variation or trim to an exact length, similar to our in class example here?</span>
 
 ## Trim ASV lengths 
 
@@ -355,14 +363,17 @@ sum(raw_ASV_table_trimmed)/sum(raw_ASV_table)
 
 # Inspect the distribution of sequence lengths of all ASVs in dataset 
 # AFTER TRIM
-data.frame(Seq_Length = nchar(getSequences(raw_ASV_table_trimmed))) %>%
+plot_ASVLength_trimmed <- 
+  data.frame(Seq_Length = nchar(getSequences(raw_ASV_table_trimmed))) %>%
   ggplot(aes(x = Seq_Length )) + 
   geom_histogram() + 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Trimmed distribution of ASV length",
+  labs(title = "Trimmed",
        y = "Number of ASVs", x = "ASV Sequence Length (bps)")
 
+# Show the plot 
+plot_ASVLength_trimmed
 ```
 
 **Note the peak at 245 is ABOVE 3000 ASVs!** Now, we have ASV lengths that are only 245 bp and we can move forward onto the next quality control step: removing chimeras. 
@@ -401,16 +412,27 @@ percRetained_chimerasTrimmed <- sum(noChimeras_ASV_table)/sum(raw_ASV_table_trim
 percRetained_chimerasRaw <-sum(noChimeras_ASV_table)/sum(raw_ASV_table)
 
 # Plot it 
-data.frame(Seq_Length_NoChim = nchar(getSequences(noChimeras_ASV_table))) %>%
+plot_ASVLength_NoChimeras <- 
+  data.frame(Seq_Length_NoChim = nchar(getSequences(noChimeras_ASV_table))) %>%
   ggplot(aes(x = Seq_Length_NoChim )) + 
   geom_histogram()+ 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Trimmed + Chimera Removal distribution of ASV length",
+  labs(title = "Trimmed + Chimera Removal",
        y = "Number of ASVs", x = "ASV Sequence Length (bps)")
+
+# Show the plot
+plot_ASVLength_NoChimeras 
 ```
 
 **Note the peak at 245 is now BELOW 3000 ASVs!** So, we have removed 241 ASVs, which were chimeras. This retained `r round(percRetained_chimerasTrimmed *100, digits=2)`% of the trimmed ASV counts and only `r round(percRetained_chimerasRaw *100, digits=2)`% of the raw merged ASV counts. 
+
+### Plot ASV Lengths 
+
+```{r plot-ASVLengths, fig.height=2.5, fig.width=7}
+plot_ASVLength_raw + plot_ASVLength_trimmed + plot_ASVLength_NoChimeras
+```
+
 
 # Track the read counts
 
@@ -430,14 +452,23 @@ head(track)
 
 # Update column names to be more informative (most are missing at the moment!)
 colnames(track) <- c("denoisedF", "denoisedR", "merged", "nochim")
-rownames(track) <- sample_names
+rownames(track) <- row.names(noChimeras_ASV_table)
 
 # Generate a dataframe to track the reads through our DADA2 pipeline
 track_counts_df <- 
   track %>%
   # make it a dataframe
   as.data.frame() %>%
-  rownames_to_column(var = "names")
+  rownames_to_column(var = "sample_names")
+
+# Now let's add a column for the number of ASVs
+# First, intuition check that the samples match 
+stopifnot(track_counts_df$sample_names == row.names(noChimeras_ASV_table))
+
+# Now, let's add a new column with the number of ASVs
+track_counts_df <- 
+  track_counts_df %>%
+  mutate(num_ASVs = rowSums(noChimeras_ASV_table > 1))
 
 # Visualize it in table format 
 DT::datatable(track_counts_df)
@@ -447,13 +478,72 @@ track_counts_df %>%
   pivot_longer(denoisedF:nochim, names_to = "read_type", values_to = "num_reads") %>%
   mutate(read_type = fct_relevel(read_type, "denoisedF", "denoisedR", "merged", "nochim")) %>%
   ggplot(aes(x = read_type, y = num_reads, fill = read_type)) + 
-  geom_line(aes(group = names), color = "grey") + 
+  geom_line(aes(group = sample_names), color = "grey") + 
   geom_point(shape = 21, size = 3, alpha = 0.8) + 
   scale_fill_brewer(palette = "Spectral") + 
   labs(x = "Filtering Step", y = "Number of Sequences") + 
   theme_bw()
 ```
 
+Now, let's plot the number of sequences that have been maintained in our samples using `geom_histogram()`. 
+
+```{r numSeqs-histogram, fig.height=2.5, fig.width=7}
+plot_ReadDepth <- 
+  track_counts_df %>%
+  ggplot(aes(x = nochim)) + 
+  geom_histogram() + 
+  labs(x = "Total # of Sequences", y = "# of Samples",
+       title = "Read Depth after DADA2") + 
+  theme_bw()
+
+# What is the ASV richness per sample? 
+plot_ASVRichness <- 
+  track_counts_df %>%
+  ggplot(aes(x = num_ASVs)) + 
+  geom_histogram() + 
+  labs(x = "Total # of ASVs", y = "# of Samples",
+       title = "ASV Richness after DADA2") + 
+  theme_bw()
+
+# Now, let's look at the relationship of ASVs and Sequencing depth 
+plot_ReadDepth_ASVRichness <- 
+  track_counts_df %>%
+  ggplot(aes(x = nochim, y = num_ASVs)) + 
+  geom_point() + 
+  labs(x = "Total # of Sequences", y = "# of ASVs",
+       title = "Read Depth vs Richness") + 
+  theme_bw()
+
+# Show the plots together 
+plot_ReadDepth + plot_ASVRichness + plot_ReadDepth_ASVRichness + 
+    plot_annotation(tag_levels = 'A')
+```
+
+The figure above consists of three plots that summarize sequencing depth, ASV richness, and their relationship after DADA2 processing of 16S rRNA gene sequencing data.
+
+**Panel A: Read Depth after DADA2:** Histogram of sequencing depth per sample (Total # of Sequences)
+
+- The distribution is roughly unimodal, centered around 4,000–6,000 reads per sample.
+- One sample has very low read counts (~0 reads)
+- A couple of other samples have higher sequencing depth (>7,500 reads).
+
+**Panel B: ASV Richness after DADA2:** Histogram of ASV richness (Total # of ASVs per sample)
+
+- Most samples have ~100–175 ASVs, following a similar unimodal distribution as sequencing depth.
+- Some samples have very low ASV counts (< 50). *Perhaps this corresponds to low read depth?*
+
+**Panel C: Read Depth vs ASV Richness:** Scatter plot showing the relationship between sequencing depth and ASV richness.
+
+- Generally there might be a positive correlation, where samples with higher read depth tend to have more ASVs. This helps show the importance of rarefaction!
+- A few points deviate, particularly samples with low read depth and low ASVs, which could indicate sequencing failures, poor-quality samples, and/or negative controls.
+
+**Overall Interpretation & Considerations**
+
+1.	*Sequencing depth variation*: Most samples cluster around a common sequencing depth, but at least one sample is definitely under-sequenced.
+2. *ASV richness follows read depth trends*: Low sequencing depth samples have lower ASV richness, potentially biasing ecological interpretations.
+3.	*Rarefaction or normalization may be needed*: The right plot suggests that richness estimates are influenced by read depth, so rarefying or using appropriate statistical corrections will be necessary for comparative analysis.
+
+<span style="color: red;">INTERPRETATION #4 of Read Depth and ASV Richness: Here, in this location of your analyses, please insert a description of the interpretation you draw regarding the plots you made above for your project data. Please be sure to note anything important about the figure you've created regarding your data including any specific notes and considerations for later. Similar to the example that is provided above.</span> 
 
 
 # Assign Taxonomy 
