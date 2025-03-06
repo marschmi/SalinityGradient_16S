@@ -500,104 +500,232 @@ Remember from the beginning of the file under "Goals", we wanted to export 4 dif
 
 ## 1. ASV Tables
 
-Below, we will prepare the following: 
+We will export the following two ASV count tables, which will be in "long" format where the **ASVs are in rows** and the **sample names are in the columns.**
 
-We will export two ASV Count tables: 
+1. **With ASV seqs:** ASV headers include the *entire* ASV sequence 245 bases.
+2. **with ASV names:** This includes re-written and shortened headers like ASV_1, ASV_2, etc, which will match the names in our fasta file below.
 
-a. **With ASV seqs:** ASV headers include the *entire* ASV sequence 245 bases.
-b. **with ASV names:** This includes re-written and shortened headers like ASV_1, ASV_2, etc, which will match the names in our fasta file below.
+### Structure of ASV tables
+
+Let's check that the ASVs are in the rows and the sample names are in the columns. If not, we can use the transpose function `t()` in R. 
+
+```{r structure-ASV-table}
+# What's the current format of the ASV table?
+head(rownames(noChimeras_ASV_table)) # Samples!
+head(colnames(noChimeras_ASV_table)) # ASV Sequences
+
+# Therefore, we need to transpose the matrix 
+final_ASV_table_withSeqs <- t(noChimeras_ASV_table)
+
+# Intuition check
+head(rownames(final_ASV_table_withSeqs)) # ASV Sequences
+head(colnames(final_ASV_table_withSeqs)) # Sample names
+```
+
+### Names in ASV tables
+
+#### Fix Sample Names 
+
+Notice above that the sample names are actually file names. Let's fix this! 
+
+> WARNING! This is an easy place where a silent error can step in where we could misname our samples, leading to catastrophe down the road. So, we need to be very careful and complete our checks and balances so we ensure the samples are not mixed up in the renaming process. 
+
+```{r SampleNames-ASV-table}
+# Remember at the top of the file we created a vector of sample names 
+head(sample_names)
+# Let's check with the actual column names 
+head(colnames(final_ASV_table_withSeqs)) # Sample names
+# And then apply our sample name script to check, too
+head(sapply(strsplit(colnames(final_ASV_table_withSeqs), "_"), `[`,1)) # Looks good! 
+
+# Now, add a break in the script break if this isn't true! 
+# Let's make sure the sample names match the file names in the matrix.
+stopifnot(sapply(strsplit(colnames(final_ASV_table_withSeqs), "_"), `[`,1) == sample_names)
+
+# Now, we've done some checks to prove to ourselves there will be no silent errors, 
+# Let's rename! 
+colnames(final_ASV_table_withSeqs) <- sample_names
+head(colnames(final_ASV_table_withSeqs))
+```
+
+#### Rename ASVs
+
+Then, we can also fix the names of our ASVs for our second ASV table where we will replace the ASV sequence names with ASV_1, ASV_2
 
 ```{r prepare-ASVcount-Seqtable}
 # Give headers more manageable names
-# First pull the ASV sequences
-asv_seqs <- colnames(noChimeras_ASV_table)
-asv_seqs[1:5]
+# First pull the ASV sequences from the rownames
+ASV_seqs <- rownames(final_ASV_table_withSeqs)
+ASV_seqs[1:5]
 
-# make headers for our ASV seq fasta file, which will be our asv names
-asv_headers <- vector(dim(noChimeras_ASV_table)[2], mode = "character")
+# How many ASVs? 
+num_ASVs <- dim(final_ASV_table_withSeqs)[1] # select the number of rows
+num_ASVs 
+
+# Make an empty vector the length of the number of ASVs, 
+# which is where we will place the new operational ASV names 
+ASV_headers <- vector(num_ASVs, mode = "character")
+
 # Let's mae sure we have an empty vector!
-asv_headers[1:5]
-length(asv_headers)
+ASV_headers[1:5]
+length(ASV_headers) # looks good! 
 
+# Now, let's create a vector with ASV numbers
 # loop through vector and fill it in with ASV names 
-for (i in 1:dim(noChimeras_ASV_table)[2]) {
-  asv_headers[i] <- paste(">ASV", i, sep = "_")
+for (i in 1:num_ASVs) {
+  # Add leading zero to ASV name so they print in correct order.
+  ASV_number <- sprintf("%04d", i)
+  # Now, rename each spot in the ASV header vector as we loop through the for loop
+  ASV_headers[i] <- paste(">ASV", ASV_number, sep = "_")
 }
 
 # Intuition check
-asv_headers[1:5]
+ASV_headers[1:5]
 
-##### Rename ASVs in our table then write out our ASV fasta file! 
-#View(noChimeras_ASV_table)
-asv_tab <- t(noChimeras_ASV_table)
-glimpse(asv_tab)
-#View(asv_tab)
+# Create a new ASV table, which will have the ASV numbers as names 
+# View(noChimeras_ASV_table) # To view the table
+final_ASV_table <- final_ASV_table_withSeqs
+glimpse(final_ASV_table)
 
-## Rename our asvs! 
-row.names(asv_tab) <- sub(">", "", asv_headers)
-asv_tab[1:5, 1:5]
-#View(asv_tab)
-```
+## Replace the ASV seqs with the ASV numbers 
+row.names(final_ASV_table) <- sub(">", "", ASV_headers)
+final_ASV_table[1:5, 1:5]
+#View(final_ASV_table) # To view the table
+``` 
 
-### Fix sample names! 
+### Write the ASV Tables!
 
-```{r fix-sample-names}
-# Let's make sure we have sample names, not file names in our matrix.
-# NOTE: asv_tab has samples in the columns (because we used t() to transpose) and ASVs in the rownames
-head(rownames(asv_tab)) # ASVs!
-head(colnames(asv_tab)) # SAMPLES!
-
-# Intuition check that our sample names match our column names!
-stopifnot(sapply(strsplit(colnames(asv_tab), "_"), `[`,1) == sample_names)
-
-# If we pass the check above, let's re-assign our sample names!
-# NOTE, we do not want to mix up the sample names at this point!! 
-colnames(asv_tab) <- sample_names
-head(colnames(asv_tab))
-
-# Let's do it on the other matrix. :) 
-# Let's make sure we have sample names, not file names in our matrix.
-# NOTE: noChimeras_ASV_table has samples in the columns (because we used t() to transpose) and ASVs in the rownames
-head(rownames(noChimeras_ASV_table)) # SAMPLES!
-head(colnames(noChimeras_ASV_table)) # ASVs!
-
-# Now, let's do it for the other table, too! 
-stopifnot(sapply(strsplit(rownames(noChimeras_ASV_table), "_"), `[`,1) == sample_names)
-
-# If we pass the check above, let's re-assign our sample names!
-# NOTE, we do not want to mix up the sample names at this point!! 
-rownames(noChimeras_ASV_table) <- sample_names
-head(rownames(noChimeras_ASV_table))
-```
-
+1. **With ASV seqs:** ASV headers include the *entire* ASV sequence 245 bases.
+2. **with ASV names:** This includes re-written and shortened headers like ASV_1, ASV_2, etc, which will match the names in our fasta file below.
 
 ```{r write-asv-tables}
-# Write BOTH the modified and unmodified ASV tables to a file!
-# Write count table with ASV numbered names (e.g. ASV_1, ASV_2, etc)
-write.table(asv_tab, 
-            file = "data/01_DADA2/ASV_counts.tsv", 
+# 1. Write count table with ASV sequence names
+write.table(final_ASV_table_withSeqs, 
+            file = "data/01_DADA2/ASV_table_withSeqNames.tsv", 
             sep = "\t", quote = FALSE, col.names = NA)
 
-# Write count table with ASV sequence names
-write.table(noChimeras_ASV_table, 
-            file = "data/01_DADA2/ASV_counts_withSeqNames.tsv", 
+# 2. Write count table with ASV numbered names (e.g. ASV_1, ASV_2, etc)
+write.table(final_ASV_table, 
+            file = "data/01_DADA2/ASV_table.tsv", 
             sep = "\t", quote = FALSE, col.names = NA)
 ```
 
 
+## 2. ASV Fasta File 
+
+Now, let's create a fasta file that has our ASV numbers with each of their corresponding ASV sequences. This file needs to be created because we will use it later to build a phylogenetic tree. 
+
+**Why do we need a phylogenetic tree?** Many widely used microbial ecology metrics rely on phylogenetic relationships to quantify community similarity. For example, there are phylogenetic alpha-diversity metrics like the [phylogenetic Hill Numbers](https://www.annualreviews.org/content/journals/10.1146/annurev-ecolsys-120213-091540) and also beta-diversity measures that incorporate the branch lenghts of phylogenetic trees as it relates to community dissimimlarity, [like the abundance-unweighted and abundance-weighted UniFrac dissimilarity metrics](https://journals.asm.org/doi/full/10.1128/aem.71.12.8228-8235.2005). These metrics consider species presence and their evolutionary distances, conveying relationships of communities through an ecological *and* evolutionary framework. 
+
+### Write the ASV Fasta File
+
+```{r write-asv-fastas}
+# Let's take our asv_headers
+head(ASV_headers, n = 2)
+# And combine it with their sequences
+head(ASV_seqs, n = 2)
+
+# Combine in a fasta format with the cbind() function
+ASV_fasta <- c(rbind(ASV_headers, ASV_seqs))
+head(ASV_fasta, n = 4)
+
+# Then, let's write it to a fasta file!
+# This will be our reference later on for which seq matches which ASV
+write(ASV_fasta, "data/01_DADA2/ASVs.fasta")
+```
+
+## 3. Taxonomy Table 
+
+Before we actually write the taxonomy table, let's put the ASV sequences as another column in our taxonomy table and then replace the rownames to be our numbered ASV names. 
+
+### Reformat Taxonomy 
+
+1. Move ASV sequences to column 
+2. Replace ASV rownames with ASV numbered names
+
+> WARNING! This is another easy place where a silent error can step in!! Here, we could accidentally misname our ASVs. So, we need to be very careful and perform intuition checks to ensure that the ASV names are not mixed up in the renaming process. 
+
+```{r reformat-tax-table}
+# Inspect the taxonomy table
+dim(taxa_addSpecies) # ASVs are in rows and Kingdom, Phylum, etc in Columns 
+colnames(taxa_addSpecies) # Column names are Linnean Taxonomy 
+head(rownames(taxa_addSpecies), n = 2) # ASV names are rownames 
+class(taxa_addSpecies) # Character matrix
+
+##### Prepare tax table 
+# 1. Add the ASV sequences from the rownames to a column 
+new_tax_table <- 
+  taxa_addSpecies%>%
+  as.data.frame() %>%
+  rownames_to_column(var = "ASVseqs") 
+
+# Intuition check 
+glimpse(new_tax_table)
+
+# IMPORTANT! Let's do our intuition check 
+# This is where we ensure we don't mix up the ASV names!
+stopifnot(new_tax_table$ASVseqs == rownames(final_ASV_table_withSeqs))
+
+# Now let's add the ASV names 
+rownames(new_tax_table) <- rownames(final_ASV_table)
+head(new_tax_table)
+
+### Final prep of tax table. Add new column with ASV names 
+ASV_tax_table <- 
+  new_tax_table %>%
+  # add rownames from count table for phyloseq handoff
+  mutate(ASV = rownames(final_ASV_table)) %>%
+  # Reorder the columns
+  dplyr::select(Kingdom, Phylum, Class, Order, Family, Genus, Species, ASV, ASVseqs)
+
+# Assign the rownames, which is required by phyloseq
+rownames(ASV_tax_table) <- ASV_tax_table$ASV
+
+# Take a quick look
+glimpse(ASV_tax_table)
+
+# Intution check
+stopifnot(ASV_tax_table$ASV == rownames(ASV_tax_table), 
+          rownames(ASV_tax_table) == rownames(ASV_tax_table))
+```
+
+### Write the Taxonomy Table 
+
+Now, let's write out the taxonomy table 
+
+```{r write-tax-table}
+# Write the table 
+write.table(ASV_tax_table, 
+            file = "data/01_DADA2/ASV_taxonomy.tsv", 
+            sep = "\t", quote = FALSE, col.names = NA)
+```
 
 
-# 2. ASV Fasta File 
+## 4. Sample Data 
 
-2. `ASV_fastas`: A fasta file that we can use to build a tree for phylogenetic analyses (e.g. phylogenetic alpha diversity metrics or UNIFRAC dissimilarty).  
+Let's save the `track_counts_df`, which can be useful for downstream analyses. 
 
-# Session Information
+```{r save-track reads}
+# And save the track_counts_df a R object, which we will merge with metadata information in the next step of the analysis in nalysis/02_Taxonomic_Assignment. 
+save(track_counts_df, file = "data/01_DADA2/track_read_counts.RData")
+```
+
+# Final info for Reproducibility 
+
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+## Session Information
 
 ```{r session-info}
 # Ensure reproducibility with package version information
 devtools::session_info()
 ```
-
-
-
-
