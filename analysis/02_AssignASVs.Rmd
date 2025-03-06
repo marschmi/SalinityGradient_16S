@@ -359,7 +359,8 @@ raw_ASV_table_trimmed <-
 table(nchar(getSequences(raw_ASV_table_trimmed)))
 
 # What proportion of total ASV sequences are left in the data? 
-sum(raw_ASV_table_trimmed)/sum(raw_ASV_table)
+percRetained_Trimmed <- sum(raw_ASV_table_trimmed)/sum(raw_ASV_table)
+percRetained_Trimmed # Show it 
 
 # Inspect the distribution of sequence lengths of all ASVs in dataset 
 # AFTER TRIM
@@ -407,7 +408,9 @@ noChimeras_ASV_table <-
 dim(noChimeras_ASV_table)
 
 # What proportion is left of the sequences? 
+# Chimera removal compared to trimming 
 percRetained_chimerasTrimmed <- sum(noChimeras_ASV_table)/sum(raw_ASV_table_trimmed)
+# Chimera removal compared to raw  
 percRetained_chimerasRaw <-sum(noChimeras_ASV_table)/sum(raw_ASV_table)
 
 # Plot it 
@@ -424,12 +427,21 @@ plot_ASVLength_NoChimeras <-
 plot_ASVLength_NoChimeras 
 ```
 
-**Note the peak at 245 is now BELOW 3000 ASVs!** So, we have removed 241 ASVs, which were chimeras. This retained `r round(percRetained_chimerasTrimmed *100, digits=2)`% of the trimmed ASV counts and only `r round(percRetained_chimerasRaw *100, digits=2)`% of the raw merged ASV counts. 
+**Note the peak at 245 is now BELOW 3000 ASVs!** So, we have removed 241 ASVs, which were chimeras. Let's review what proportion of ASVs we have retained along the workflow: 
+
+1. `r round(percRetained_Trimmed * 100, digits = 2)`% of the raw ASVs were retained *after trimming*.
+2. `r round(percRetained_chimerasTrimmed *100, digits = 2)`% of the trimmed ASV counts were retained *after chimera removal*.
+3. This translates to `r round(percRetained_chimerasRaw *100, digits=2)`% retention of the original, raw merged ASV counts after *both trimming and chimera removal.*
+
+So, there is good retention of the ASVs after length trimming and chimera removal, especially because there is no variation in read length allowed in this dataset. 
+
+<span style="color: red;">INTERPRETATION #4: (1) What proportion of raw ASVs were retained after trimming? (2) What proportion of the trimmed ASVs were retained after chimera removal? (3) What proportion of the total merged ASVs were retained after both trimming and chimera removal? Do you think that the ASV lengths have been trimmed appropriately? For inspiration, you are encouraged to describe the conclusions from the the ASV length plot below.</span> 
 
 ### Plot ASV Lengths 
 
 ```{r plot-ASVLengths, fig.height=2.5, fig.width=7}
-plot_ASVLength_raw + plot_ASVLength_trimmed + plot_ASVLength_NoChimeras
+plot_ASVLength_raw + plot_ASVLength_trimmed + plot_ASVLength_NoChimeras + 
+    plot_annotation(tag_levels = 'A')
 ```
 
 
@@ -539,7 +551,7 @@ The figure above consists of three plots that summarize sequencing depth, ASV ri
 2. *ASV richness follows read depth trends*: Low sequencing depth samples have lower ASV richness, potentially biasing ecological interpretations.
 3.	*Rarefaction or normalization may be needed*: The right plot suggests that richness estimates are influenced by read depth, so rarefying or using appropriate statistical corrections will be necessary for comparative analysis.
 
-<span style="color: red;">INTERPRETATION #4: What conclusions can you draw from each of the three individual plots above? Please note anything important that the figure might indicate regarding your project data. Are there any specific notes and considerations for later?</span> 
+<span style="color: red;">INTERPRETATION #5: What conclusions can you draw from each of the three individual plots above? Please note anything important that the figure might indicate regarding your project data. Are there any specific notes and considerations for later?</span> 
 
 
 # Assign Taxonomy 
