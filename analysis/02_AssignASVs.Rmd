@@ -260,28 +260,29 @@ write.table(raw_ASV_table, file = "data/01_DADA2/raw_ASV_counts.tsv",
 
 ## What are the current ASV lengths? 
 
-First, let's inspect the distribution of the ASV sequence lengths across all of the ASVs that we have inferred. First, we need to consider: **What is the length of ASV that expect?** 
+First, let's inspect the distribution of the ASV sequence lengths across all of the ASVs that we have inferred. First, we need to consider: **What is the expected length of the ASVs?** 
 
-Here, we have sequenced the 16S rRNA V4 hypervariable region with the 515F and 806R primers. Therefore: 
-
-1. *What's the total length of our starting amplicons?* 
+1. *What is the sequencing strategy?*
+    - paired-end 250bp (2x250bp) Illumina MiSeq Sequencing was used.
+    - Specifically, the V4 hypervariable region of the 16S rRNA gene was targeted for sequencing with the 515F and 806R primers. 
+2. *What's the total length of our starting amplicons?* 
     - Our primers are named after the location they bind to on the 16S gene. So: 
     - `806 - 515 = 291` 
     - The total length of the starting amplicon is 291 base pairs, with primers.
-2. *What is the ASV length without primers?* 
+3. *What is the ASV length without primers?* 
     - The 515F (`GTGYCAGCMGCCGCGGTAA`) primer is 19 base pairs. 
     - The 806R (`GGACTACNVGGGTWTCTAAT`) primer is 20 base pairs. 
     - `291 - 19 - 20 = 252` 
     - The expected ASV length without primers is **252 base pairs**. 
     - **IMPORTANT:** Remember, we did not sequence the primers in our current example, because the [Kozich et al., 2013](https://journals.asm.org/doi/10.1128/aem.01043-13) library prep was used. However, if the regular Illumina 2-step library preparation approach was used, the primers will be sequenced!
-3. *What is the length of the trimmed ASVs after `filterAndTrim()`?* 
+4. *What is the length of the trimmed ASVs after `filterAndTrim()`?* 
     - In our `01_QualityTrimming.Rmd`, we used `trimLeft = 8` to remove the bases at the beginning of the forward read and `truncLen = c(250, 248)`, which kept the full forward read length and removed 2 bases at the end of the reverse read. Therefore: 
     - `252 - 8 = 244`
-4. *What is the overlap between our forward and reverse reads?*
+5. *What is the overlap between our forward and reverse reads?*
     - We performed 2x250 paired-end Illumina MiSeq Sequencing. However, from our multiQC report, we can see that our read length is actually 251 bp. 
     - If we have a total read length of 251 base pairs and **we did not sequence our primers** (because we used the Kozich et al., 2013 AEM library preparation), then our overlap should be ~100%. 
     
-<span style="color: red;">INTERPRETATION #1 of ASV Lengths: Here, in this location of your analyses, please insert a description, similar to the statements above, of your hypotheses of your expected ASV length. Please provide a clear explanation using information on the sequence strategy (e.g. 2x250 Ilummina MiSeq), primer information (e.g., length of primers), library preparation information (e.g., are the primers sequenced? length of amplicon?), and how your filterAndTrim() parameters might have modified the length of your ASVs.</span>
+<span style="color: red;">INTERPRETATION #1: What is the hypothesized ASV length for your project data set? Please insert a description here, similar to the statements above, of the expected ASV length. Please provide a clear explanation using the following, which an example is provided above: (1) sequencing strategy, (2) total length of starting amplicons, (3) the expected ASV length without the primers, (4) length expected after the filterAndTrim() step, and (5) the expected percent overlap.</span>
 
 ### ASV Length Stats 
 
@@ -327,8 +328,7 @@ plot_ASVLength_raw <-
   geom_histogram() + 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Raw",
-       y = "Number of ASVs", x = "ASV Sequence Length (bps)")
+  labs(y = "Number of ASVs", x = "Raw ASV Length (bps)")
 
 # Show the plot
 plot_ASVLength_raw
@@ -336,11 +336,11 @@ plot_ASVLength_raw
 
 As we saw in the table, the length of the ASVs is mostly 245 base pairs. 
 
-<span style="color: red;">INTERPRETATION #2 of ASV Lengths: Here, in this location of your analyses, please insert a description of the interpretation you draw regarding the lengths of your ASVs that you've inferred from the ASV length table function above and it's graphical visualization above. Do these results match with what you stated in INTERPREATAION #1?</span>
+<span style="color: red;">INTERPRETATION #2: Does the ASV length data (table and plot above) match your hypotheses from INTERPRETATION #1? Why or why not? Please insert a description of the interpretation you draw regarding the lengths of your ASVs that you've inferred from the ASV length table and it's graphical visualization above. </span>
 
 ***
 
-<span style="color: red;">INTERPRETATION #3 of ASV Lengths: Based on the data from the ASV length table and your answer above in INTERPRETATION #2, what is your suggested trimming procedure for your ASV lengths? Will you allow some variation or trim to an exact length, similar to our in class example here?</span>
+<span style="color: red;">INTERPRETATION #3: Taking into account INTERPRETATIONS #1 and #2, what is your suggested trimming procedure for your ASV lengths? Will you allow some variation or trim to an exact length, similar to our in class example here?</span>
 
 ## Trim ASV lengths 
 
@@ -369,8 +369,7 @@ plot_ASVLength_trimmed <-
   geom_histogram() + 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Trimmed",
-       y = "Number of ASVs", x = "ASV Sequence Length (bps)")
+  labs(y = "Number of ASVs", x = "Trimmed ASV Length (bps)")
 
 # Show the plot 
 plot_ASVLength_trimmed
@@ -418,8 +417,8 @@ plot_ASVLength_NoChimeras <-
   geom_histogram()+ 
   # include the x-axis scales
   scale_x_continuous(limits = c(0, maxLength_ASV + 5)) + 
-  labs(title = "Trimmed + Chimera Removal",
-       y = "Number of ASVs", x = "ASV Sequence Length (bps)")
+  labs(y = "Number of ASVs \n (Post-Chimera Removal)", 
+       x = "ASV Length (bps)")
 
 # Show the plot
 plot_ASVLength_NoChimeras 
@@ -487,13 +486,12 @@ track_counts_df %>%
 
 Now, let's plot the number of sequences that have been maintained in our samples using `geom_histogram()`. 
 
-```{r numSeqs-histogram, fig.height=2.5, fig.width=7}
+```{r numSeqsASV-plot, fig.height=2.5, fig.width=7}
 plot_ReadDepth <- 
   track_counts_df %>%
   ggplot(aes(x = nochim)) + 
   geom_histogram() + 
-  labs(x = "Total # of Sequences", y = "# of Samples",
-       title = "Read Depth after DADA2") + 
+  labs(x = "Total # of Sequences", y = "# of Samples") + 
   theme_bw()
 
 # What is the ASV richness per sample? 
@@ -501,8 +499,7 @@ plot_ASVRichness <-
   track_counts_df %>%
   ggplot(aes(x = num_ASVs)) + 
   geom_histogram() + 
-  labs(x = "Total # of ASVs", y = "# of Samples",
-       title = "ASV Richness after DADA2") + 
+  labs(x = "Total # of ASVs", y = "# of Samples") + 
   theme_bw()
 
 # Now, let's look at the relationship of ASVs and Sequencing depth 
@@ -510,8 +507,7 @@ plot_ReadDepth_ASVRichness <-
   track_counts_df %>%
   ggplot(aes(x = nochim, y = num_ASVs)) + 
   geom_point() + 
-  labs(x = "Total # of Sequences", y = "# of ASVs",
-       title = "Read Depth vs Richness") + 
+  labs(x = "Total # of Sequences", y = "# of ASVs") + 
   theme_bw()
 
 # Show the plots together 
@@ -543,7 +539,7 @@ The figure above consists of three plots that summarize sequencing depth, ASV ri
 2. *ASV richness follows read depth trends*: Low sequencing depth samples have lower ASV richness, potentially biasing ecological interpretations.
 3.	*Rarefaction or normalization may be needed*: The right plot suggests that richness estimates are influenced by read depth, so rarefying or using appropriate statistical corrections will be necessary for comparative analysis.
 
-<span style="color: red;">INTERPRETATION #4 of Read Depth and ASV Richness: Here, in this location of your analyses, please insert a description of the interpretation you draw regarding the plots you made above for your project data. Please be sure to note anything important about the figure you've created regarding your data including any specific notes and considerations for later. Similar to the example that is provided above.</span> 
+<span style="color: red;">INTERPRETATION #4: What conclusions can you draw from each of the three individual plots above? Please note anything important that the figure might indicate regarding your project data. Are there any specific notes and considerations for later?</span> 
 
 
 # Assign Taxonomy 
