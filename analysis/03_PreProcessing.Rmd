@@ -1,0 +1,137 @@
+---
+title: "Untitled"
+author: "Marian Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.align = "center", 
+                      # write figures to the figures folder
+                      fig.path = "../figures/03_PreProcessing/")
+```
+
+
+# Goals 
+
+Remove any potential contaminants and evaluate the accuracy of our sequencing run. Then, we will write our final data objects. 
+
+1. Load in data that we've generated: `asv_table`, `tax_table`, and metadata (which includes `metadata.csv` and `track_reads_reads`). We created these files in `analysis/02_AssignASVs.Rmd`.
+2. Remove any ASVs that are chloroplasts. 
+3. Remove ASVs that are mitochondria. 
+4. Evaluate any ASVs from the negative controls. Then, remove negative controls. 
+5. Evaluate the mock community (positive control). Accuracy of sequencing. 
+6. Check for reverse complements. 
+7. Check the sequencing depth of samples. Remove obvious samples with too few reads. 
+
+## Input 
+
+1. Metadata: `metadata.csv` and `data/01_DADA2/track_read_counts.RData`.
+2. ASV table: `data/01_DADA2/ASV_table.csv` 
+3. Taxonomy Table: `data/01_DADA2/ASV_taxonomy.tsv`
+
+## Output 
+
+1. A pre-processed phyloseq object (S4 object): `raw_preprocessed_physeq.RData`.
+
+
+# Set Environment 
+
+## Load Packages 
+```{r load-packages}
+#install.packages("BiocManager")
+#BiocManager::install("Biostrings")
+
+# Load packages with pacman
+pacman::p_load(devtools, phyloseq, Biostrings, tidyverse, install = FALSE)
+```
+
+
+## Load Data 
+
+### 1. Metadata 
+
+- What to copy? 
+  1. `/workdir/in_class_data/metadata.csv`-> `/workdir/netID/SalinityGradient_16S/data/`
+
+  2. `/workdir/in_class_data/track_read_counts.RData` ->  `/workdir/netID/SalinityGradient_16S/data/01_DADA2/`
+
+```{load-metadata}
+# load in metadata
+metadata_df <- 
+  read_csv("data/metadata.csv") %>%
+  # Fix Column Name
+  dplyr::rename("sample_names" = "...1") %>%
+  # Add sample names also as a column 
+  mutate(names = sample_names) 
+
+# Inspect 
+head(metadata_df)
+dim(metadata_df)
+
+# include dada2 output
+load("data/01_DADA2/track_read_counts.RData")
+
+# Take a look
+head(track_counts_df)
+dim(track_counts_df)
+
+# Check filenames 
+head(track_counts_df$sample_names)
+
+# Fix sample names in track_reads 
+track_counts_df$sample_names <- sapply(strsplit(track_counts_df$sample_names, "_"), `[`, 1)
+
+# Intuition check 
+head(track_counts_df$sample_names)
+
+# What's different? 
+setdiff(track_counts_df$sample_names, metadata_df$sample_names)
+
+# Let's do a filtering join with left_join 
+metadata_final_df <- 
+  metadata_df %>%
+  left_join(., track_counts_df, by = "sample_names") %>%
+  # sample names to the rownames to merge into phyloseq
+  column_to_rownames(var = "sample_names")
+
+# Check 
+dim(metadata_final_df)
+```
+
+## 2. ASV Table 
+
+Copy data over to: `/workdir/netID/SalinityGradient_16S/data/01_DADA2/`
+
+```{r load-asv-table}
+asv_df <- 
+  read.delim(file = "data/01_DADA2/ASV_table.tsv", sep = "\t",
+           # add the column names and row names 
+           header = TRUE, row.names = 1) %>%
+  dplyr::select(-"CJ.V08.P") 
+
+# Inspect 
+asv_df[1:3, 1:3]
+
+# fix Column names 
+## Remove the X: denote at the beginning "^"
+colnames(asv_df) <- sub(pattern = "^X", replacement = "" , colnames(asv_df))
+## Replace the . with a -: "\\." since . is a special character in regex
+colnames(asv_df) <- gsub(pattern = "\\.", replacement = "-", colnames(asv_df))
+
+# Final inspection 
+head(colnames(asv_df))
+asv_df[1:3, 1:3]
+```
+
+## 3. Taxonomy Table
+
+```{r load-tax-table}
+
+```
+
+
+
