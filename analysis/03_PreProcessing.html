@@ -1816,21 +1816,15 @@ workflow.</li>
 <span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a><span class="fu">load</span>(<span class="st">&quot;data/01_DADA2/track_read_counts.RData&quot;</span>)</span>
 <span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a></span>
 <span id="cb9-4"><a href="#cb9-4" tabindex="-1"></a><span class="co"># Take a look</span></span>
-<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="fu">head</span>(track_counts_df)</span></code></pre></div>
-<pre><code>##                             sample_names denoisedF denoisedR merged nochim
-## 1     022um-Control_R1_filtered.fastq.gz      8051      8019   8015   8015
-## 2 20210602-MA-ABB1F_R1_filtered.fastq.gz      4451      4391   4226   3534
-## 3 20210602-MA-ABB1P_R1_filtered.fastq.gz      4082      4052   3737   3183
-## 4 20210602-MA-ABB1W_R1_filtered.fastq.gz      6496      6481   6106   5053
-## 5 20210602-MA-ABS1F_R1_filtered.fastq.gz      4233      4242   3960   3249
-## 6 20210602-MA-ABS1P_R1_filtered.fastq.gz      4685      4709   4423   3808
-##   num_ASVs
-## 1        9
-## 2      145
-## 3      141
-## 4      157
-## 5      128
-## 6      150</code></pre>
+<span id="cb9-5"><a href="#cb9-5" tabindex="-1"></a><span class="fu">glimpse</span>(track_counts_df)</span></code></pre></div>
+<pre><code>## Rows: 96
+## Columns: 6
+## $ sample_names &lt;chr&gt; &quot;022um-Control_R1_filtered.fastq.gz&quot;, &quot;20210602-MA-ABB1F_…
+## $ denoisedF    &lt;dbl&gt; 8051, 4451, 4082, 6496, 4233, 4685, 5652, 5118, 6520, 610…
+## $ denoisedR    &lt;dbl&gt; 8019, 4391, 4052, 6481, 4242, 4709, 5690, 5093, 6544, 613…
+## $ merged       &lt;dbl&gt; 8015, 4226, 3737, 6106, 3960, 4423, 5316, 4832, 6171, 586…
+## $ nochim       &lt;dbl&gt; 8015, 3534, 3183, 5053, 3249, 3808, 4437, 4136, 5053, 482…
+## $ num_ASVs     &lt;dbl&gt; 9, 145, 141, 157, 128, 150, 144, 140, 127, 150, 129, 135,…</code></pre>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">dim</span>(track_counts_df)</span></code></pre></div>
 <pre><code>## [1] 96  6</code></pre>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Check filenames </span></span>
@@ -1864,8 +1858,7 @@ workflow.</li>
 </div>
 <div id="b.-asv-table" class="section level3">
 <h3>1b. ASV Table</h3>
-<p>Copy data over to:
-<code>/workdir/netID/SalinityGradient_16S/data/01_DADA2/</code></p>
+<p>Now, let’s load in the ASV count table.</p>
 <div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a>asv_df <span class="ot">&lt;-</span> </span>
 <span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a>  <span class="fu">read.delim</span>(<span class="at">file =</span> <span class="st">&quot;data/01_DADA2/ASV_table.tsv&quot;</span>, <span class="at">sep =</span> <span class="st">&quot;</span><span class="sc">\t</span><span class="st">&quot;</span>,</span>
 <span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a>           <span class="co"># add the column names and row names </span></span>
@@ -2666,11 +2659,11 @@ follow the code below for your samples.</p>
 <div class="sourceCode" id="cb87"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb87-1"><a href="#cb87-1" tabindex="-1"></a><span class="co"># Take the time now that we are at the end of the script</span></span>
 <span id="cb87-2"><a href="#cb87-2" tabindex="-1"></a>end_time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
 <span id="cb87-3"><a href="#cb87-3" tabindex="-1"></a>end_time </span></code></pre></div>
-<pre><code>## [1] &quot;2025-03-14 22:12:32 EDT&quot;</code></pre>
+<pre><code>## [1] &quot;2025-03-14 22:15:50 EDT&quot;</code></pre>
 <div class="sourceCode" id="cb89"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb89-1"><a href="#cb89-1" tabindex="-1"></a><span class="co"># Echo the elapsed time</span></span>
 <span id="cb89-2"><a href="#cb89-2" tabindex="-1"></a>elapsed_time <span class="ot">&lt;-</span> <span class="fu">round</span>((end_time <span class="sc">-</span> start_time), <span class="dv">3</span>)</span>
 <span id="cb89-3"><a href="#cb89-3" tabindex="-1"></a>elapsed_time</span></code></pre></div>
-<pre><code>## Time difference of 7.698 secs</code></pre>
+<pre><code>## Time difference of 7.663 secs</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session Information</h2>
