@@ -68,6 +68,15 @@ pacman::p_load(devtools, phyloseq, dada2, patchwork,
                Biostrings, tidyverse, install = FALSE)
 ```
 
+## Timing of this script
+
+Let's record how long this file took to run on the class server, which we will record at the end of the script. 
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
+
 
 ## 1. Load Data 
 
@@ -78,7 +87,7 @@ Here, we will load in our **metadata** files, which include:
 1. `data/metadata.csv`: This file contains all of our samples and also any measured variables, including station, date of collection, depth of sample, temperature, pH, salinity, etc. 
 2. `data/01_DADA2/track_read_counts.RData`: This file contains how many reads we maintained in our samples through the DADA2 workflow. 
 
-```{load-metadata}
+```{r load-metadata}
 # load in metadata
 metadata_df <- 
   read_csv("data/metadata.csv") %>%
@@ -187,9 +196,10 @@ noChloros_physeq <-
 
 # How many ASVs were chloroplasts? 
 numChloros_ASVs <- ntaxa(raw_physeq) - ntaxa(noChloros_physeq)
+
+#There were `r numChloros_ASVs` ASVs that were chloroplasts.
 ```
 
-There were `r numChloros_ASVs` ASVs that were chloroplasts.
 
 
 ## 4. Remove Mitochondria 
@@ -201,9 +211,10 @@ noChlorosMitos_physeq <-
 
 # How many ASVs were mitochondria? 
 numMitos_ASVs <- ntaxa(noChloros_physeq) - ntaxa(noChlorosMitos_physeq)
+
+#There were `r numMitos_ASVs` ASVs that were mitochondria in the data set.
 ```
 
-There were `r numMitos_ASVs` ASVs that were mitochondria in the data set.
 
 
 # Evaluate and remove the control samples 
@@ -328,7 +339,6 @@ mock_SeqDepth <-
   otu_table() %>%
   data.frame() %>%
   colSums()
-
 
 # Who is in the sequenced mock community? 
 mock_physeq %>%
