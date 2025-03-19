@@ -55,6 +55,23 @@ First, we will use the [phyloseq package](https://joey711.github.io/phyloseq/) t
 
 1. A **pre-processed S4 phyloseq object**: `raw_preprocessed_physeq.RData`.
 
+# What is a phyloseq object? 
+
+Below is figure 3 from the phyloseq paper by [McMurdie et al. (2013) in PLoS ONE](http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0061217). 
+
+Phyloseq 
+
+![](images/phyloseq_object.png)
+
+## Why use phyloseq? 
+
+It's about making our job as microbial ecologists easier! Phyloseq helps us as researchers to: 
+
+- Efficiently integrates multiple data types in (microbiome/sequencing) research.
+- Supports biodiversity analyses (alpha, beta diversity) and statistical tests, which we are working towards. 
+- Access built-in functions for filtering (`prune_taxa()`, `prune_samples()`), subsetting (`subset_taxa()`, `subset_samples()`), and normalizing data across a database.
+- Enables easy visualization with functions like `plot_richness()`, `ordinate()`, and `plot_ordination()`.
+
 # Set Environment 
 
 ## Load Packages 
@@ -427,7 +444,7 @@ Do you have any reverse complements in your dataset?
 
 # 8. Sequencing Depth 
 
-```{r seq-depth}
+```{r seq-depth, fig.height=3, fig.width=8}
 # The current data objec
 noChlorosMitosNegPosControls_physeq
 
@@ -507,7 +524,8 @@ min(sample_sums(raw_preprocessed_physeq))
 # Here, we could remove more samples if we needed to
 seqSums_df %>%
   dplyr::select(names, TotalSeqs) %>%
-  arrange(TotalSeqs)
+  arrange(TotalSeqs) %>%
+  head(n = 10)
 ```
 
 # 9. Save Raw Preprocessed Phyloseq Object
