@@ -1,0 +1,182 @@
+---
+title: " ASVs with Phyloseq"
+author: "Mar Schmidt"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
+  chunk_output_type: console
+---
+
+
+# Goals 
+
+The goal is to make a phylogenetic tree 
+
+1. load in preprocessed phyloseq object. 
+2. Create ASV fasta file from the phyloseq object
+3. Align the 16S Sequences from our fasta file 
+4. Create a maximum likelihood tree. 
+
+## Inputs 
+1. `raw_preprocessed_physeq`
+
+## Outputs 
+1. MAAFT_aligned_ASV.fasta
+2. ASVs_unrooted.tree
+
+
+# Setup 
+
+## Timing of this script
+
+Let's record how long this file took to run on the class server, which we will record at the end of the script. 
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
+
+## Set Seed 
+```{r set-seed}
+set.seed(238438)
+```
+
+## Load Packages 
+```{r load-packages}
+# Install phytools
+remotes::install_github("liamrevell/phytools")
+
+# Install ggtree
+devtools::install_github("GuangchuangYu/ggtree")
+
+# Now load them into the session 
+pacman::p_load(phytools, ggtree, tidyverse, install = FALSE)
+```
+
+## Load Data 
+
+```{r load-physeq}
+# Load physeq 
+load("data/03_PreProcessing/raw_preprocessed_physeq.RData")
+raw_preprocessed_physeq
+```
+
+# Write ASV Fasta 
+
+```{r asv-fasta}
+# Pull out ASV sequences and ASV names
+asv_seq_df <- 
+  raw_preprocessed_physeq@tax_table %>% 
+  data.frame() %>% 
+  dplyr::select(ASV, ASVseqs)
+
+#View(asv_seq_df)
+
+# Add the ">" to make fasta header
+asv_seq_df$ASV <- paste0(">", asv_seq_df$ASV)
+
+#View(asv_seq_df)
+
+# Create fasta object
+asv_seq_fasta <- c(rbind(asv_seq_df$ASV, asv_seq_df$ASVseqs))
+head(asv_seq_fasta)
+
+# Write to a fasta file 
+write(asv_seq_fasta, 
+      file = "data/04_Phylogenetic_Tree/preprocessed_ASVs.fasta")
+
+```
+
+
+# Run Alignment with MAAFT 
+
+Note that `engine.opts = '-l'` in our R chunk header name gives us our original terminal base environment. 
+
+
+To test shell code via RMarkdown: 
+- **Mac:** `command` + `option` + `enter` will send line-by-line code 
+- **Windows:** `control` + `alt` + `enter`
+
+
+```{r run-mafft, engine = 'bash', engine.opts = '-l'}
+# Write bash code to run MAFFT
+# First provide the path to MAFFT
+export PATH=/programs/mafft/bin:$PATH
+
+# change directories to provide the fasta file we made above 
+cd data/04_Phylogenetic_Tree/
+pwd
+
+# Where am I? 
+echo "The working directory is $PWD"
+
+# Set a seed for consistency and reproducibility 
+RANDOM=238428
+
+# Now, actually run MAFFT
+/programs/mafft/bin/mafft --auto preprocessed_ASVs.fasta > MAFFT_aligned_ASVs.fasta
+
+# Where am I? 
+echo "The working directory is $PWD"
+```
+
+# FastTree2
+
+```{r run-fasttree2, engine = 'bash', engine.opts = '-l'}
+# Where am I? 
+echo "The working directory is $PWD"
+
+# Load fasttree 
+# Provide export path to fasttree 
+export PATH=/programs/FastTree-2.1.11:$PATH
+
+# change directories to provide the fasta file we made above 
+cd data/04_Phylogenetic_Tree/
+echo "The working directory is $PWD"
+
+# Run Fasttree to generate phylogenetic tree 
+# parameters: 
+    # -nt = indicates it's a nucleotide alignment
+    # -gtr = generalized time reversible substitution model 
+    # -fastest speed up the model, reduce memory usage (recommended for datasets that have >50,000)
+    # -log = output a log file 
+    # input alignment file 
+    # specify the output tree file 
+FastTree -nt -gtr -fastest -log FastTree.log MAFFT_aligned_ASVs.fasta > ASVs_unrooted.tree
+
+# Change back to the main directory 
+cd ../../
+echo "The working directory is $PWD"
+```
+
+
+# Final info for Reproducibility 
+
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+## Session Information
+
+```{r session-info}
+# Ensure reproducibility with package version information
+devtools::session_info()
+```
