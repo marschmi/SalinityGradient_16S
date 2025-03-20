@@ -1,0 +1,223 @@
+---
+title: "Pruning Phylogenetic Trees with ggTree"
+author: "Mar Schmidt"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
+editor_options: 
+  chunk_output_type: console
+---
+
+# Goals 
+
+1. Load the fastree unrooted tree.  
+2. Add tree to phyloseq object.  
+3. Visualize and inspect tree with ggtree. 
+4. Prune ASVs, if needed.  
+5. Root our tree. 
+6. Combine new tree with a phyloseq object. 
+7. Save 2 phyloseq objects: 1. Unrooted tree phyloseq object, 2. Rooted tree phyloseq object. 
+
+Input: raw_preprocessed_physeq; ASVs_unrooted.tree; MAFT_aligned_ASVs.fasta
+Output: phytree_preprocessed_physeq 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      fig.align = "center",
+                      # Always relevant to the document directory 
+                      # send any figure output to this folder 
+                      fig.path = "../figures/04_Phylogenetic_Tree/",
+                      warning = FALSE) 
+```
+
+# Before you start
+
+## Timing of this script
+
+Let's record how long this file took to run on the class server, which we will record at the end of the script. 
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
+
+## Set my seed 
+```{r set-seed}
+# Any number can be chosen 
+set.seed(238428)
+```
+
+## Load Packages 
+```{r load-packages}
+pacman::p_load(tidyverse, phyloseq, ggtree, phytools, tidytree,
+               install = FALSE)
+```
+
+## Load Data files 
+```{r load-data}
+# Preprocessed phyloseq object 
+load("data/03_PreProcessing/raw_preprocessed_physeq.RData")
+raw_preprocessed_physeq
+
+# Load in the tree! 
+unrooted_tree <- read.tree("data/04_Phylogenetic_Tree/ASVs_unrooted.tree")
+unrooted_tree
+str(unrooted_tree)
+```
+
+# Merge Phyloseq 
+```{r merge-physeq}
+# Intuition check 
+stopifnot(ntaxa(raw_preprocessed_physeq) == ntaxa(unrooted_tree))
+# No news is good news! 
+
+# Merge the tree with the phyloseq object 
+unrooted_physeq <- 
+  merge_phyloseq(raw_preprocessed_physeq, unrooted_tree)
+
+# Let's take a look! 
+unrooted_physeq
+```
+
+
+# Plot tree with `ggTree`
+
+```{r plot-tree-unrooted}
+# Make a basic tree with the domains 
+kingdom_tree <- 
+  ggtree(unrooted_physeq) + 
+  # color tips by kingdom
+  geom_tippoint(mapping = aes(color = Kingdom)) + 
+  # add a title
+  labs(title = "Unrooted Tree") + 
+  # Move the legend to the bottom of the tree 
+  theme(legend.position = "bottom")
+
+# Look at it 
+kingdom_tree
+
+# Make a basic tree with the domains 
+kingdom_node_tree <- 
+  kingdom_tree + 
+  # Add the node lables
+  geom_text(aes(label=node), hjust= -0.5, vjust = -0.3, size = 2)
+
+# Visualize 
+kingdom_node_tree
+```
+
+# Root tree from the Archaea 
+
+## Create the Rooted Archaeal Tree 
+
+```{r root-archaea}
+# but first find the ASVs that are Archaea
+archaea_node <- 
+  tax_table(raw_preprocessed_physeq) %>%
+  as.data.frame() %>%
+  filter(Kingdom == "Archaea") %>%
+  pull(ASV)
+
+# find the node that encompasses all Archaea
+archaea_node <- findMRCA(unrooted_tree, tips = archaea_node, type = "node") # node = 3394
+
+# View clade to check it out
+viewClade(kingdom_tree, archaea_node)
+viewClade(kingdom_node_tree, archaea_node)
+
+# Let's highlight! 
+node_3394 <- 
+  ggtree(unrooted_tree) + 
+  geom_tippoint(mapping = aes(color = "Kingdom"), size = 1.5) + 
+  geom_text(aes(label = node), hjust = -0.7, vjust = -0.2, size = 2) +
+  geom_highlight(node = archaea_node, fill = "dodgerblue")
+
+# Visualize it 
+node_3394
+
+# Root it! 
+archaea_root_tree <-
+  ape::root(unrooted_tree, node = archaea_node, resolve.root = TRUE)
+
+# Check it! 
+is.rooted(archaea_root_tree)
+```
+
+
+## Plot Rooted Archaeal Tree 
+
+```{r plot-archaeal-rooted-tree}
+# Merge with physeq 
+archaea_root_physeq <- 
+  merge_phyloseq(raw_preprocessed_physeq, archaea_root_tree)
+
+# Finally let's plot it! 
+# Plot rooted simple tree with no text 
+archaea_rooted_simple <- 
+  ggtree(archaea_root_physeq) + 
+  geom_tippoint(aes(color = Kingdom))
+
+# View it! 
+archaea_rooted_simple
+
+# Plot rooted tree with text
+archaea_rooted_text <- 
+  ggtree(archaea_root_physeq) +
+  geom_tippoint(aes(color = Kingdom)) + 
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+
+# View it! 
+archaea_rooted_text
+```
+
+# Evaluate Long Branches 
+
+```{r evaluate-long-branches}
+# Zoom in on a specific node 
+viewClade(archaea_rooted_text, 3309)
+
+
+# Who are the ancestors? 
+ancestor(archaea_root_tree, 703)
+
+# Look at the most recent common ancestor
+MRCA(archaea_root_tree, .node1 = 703, .node2 = 702)
+```
+
+
+
+
+
+# Final info for Reproducibility 
+
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+## Session Information
+
+```{r session-info}
+# Ensure reproducibility with package version information
+devtools::session_info()
+```
+
+
+
+

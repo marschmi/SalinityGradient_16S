@@ -79,10 +79,16 @@ It's about making our job as microbial ecologists easier! Phyloseq helps us as r
 #install.packages("BiocManager")
 #BiocManager::install("Biostrings")
 
+# NOTE, you will need to install the following 2 packages to 
+# re-create the negative control plots below!
+#install.packages("ggpubr")
+#install.packages("rstatix")
+
 # Load packages with pacman
 # Be sure that you load dada2 & Patchwork, which we didn't do in class on March 12th
-pacman::p_load(devtools, phyloseq, dada2, patchwork, 
-               Biostrings, tidyverse, install = FALSE)
+pacman::p_load(devtools, phyloseq, dada2, patchwork, Biostrings, tidyverse,
+               # Note to add ggpubr & rstatix!!
+               ggpubr, rstatix, install = FALSE)
 ```
 
 ## Timing of this script
@@ -281,6 +287,55 @@ neg_controlASV_physeq
 # Plot Abundances of neg control ASVs in samples versus controls 
 neg_controlASV_physeq %>%
   plot_bar(., "ASV", facet_grid = Sample_or_Control~.)
+
+# Calculate the phylum relative abundance 
+# Note: The read depth MUST be normalized in some way: scale_reads
+asv_negControls_df <- 
+  neg_controlASV_physeq %>%
+  # agglomerate at the ASV level 
+  tax_glom(taxrank = "ASV") %>% 
+  # Transform counts to relative abundance so that they are at least roughly comparable between samples! 
+  transform_sample_counts(function (x) {x/sum(x)}) %>%
+  # Melt to a long format 
+  psmelt()
+
+# Check
+head(asv_negControls_df)
+dim(asv_negControls_df)
+
+# Statistically test! 
+negControl_ASV_statTest <- 
+  asv_negControls_df %>%
+  group_by(ASV) %>%
+  wilcox_test(Abundance ~ Sample_or_Control) %>%
+  adjust_pvalue(method = "fdr") %>%
+  add_significance()
+
+# Let's inspect! 
+negControl_ASV_statTest 
+
+# Prep stats for plotting 
+negControl_ASV_statTest_plotting <- 
+  negControl_ASV_statTest %>% 
+  # Add the x and y positions for plotting 
+  add_xy_position(x = "Sample_or_Control")
+
+# Let's make a dot plot
+asv_negControls_df %>%
+  # build the plot 
+  ggplot(aes(x = Sample_or_Control, y = Abundance, 
+             fill = Sample_or_Control, color = Sample_or_Control)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_point(position = position_jitterdodge()) + 
+  facet_wrap(ASV~., scales = "free_y") + 
+  scale_color_manual(values = c("firebrick3", "cornflowerblue")) + 
+  scale_fill_manual(values = c("firebrick3", "cornflowerblue")) + 
+  # finally, let's add the pvalues! 
+  stat_pvalue_manual(negControl_ASV_statTest_plotting) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+
+
 
 # Create a new vector with all ASVs except ASV_0017, ASV_0050
 negControlASVs_rm <- dplyr::setdiff(neg_controlASVs_vec$ASV, c("ASV_0017", "ASV_0050"))
