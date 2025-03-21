@@ -432,7 +432,7 @@ asv_negControls_df %>%
 
 ### 5c. Remove any ASVs in the negative controls. 
 
-Now, let's actually remove the ASVs that are more abundant in 
+Now, let's actually remove the ASVs that are more abundant in the negative controls compared to the samples. 
 
 ```{r rm-negControl-ASVs}
 # Create a new vector with all ASVs except ASV_0017, ASV_0050
