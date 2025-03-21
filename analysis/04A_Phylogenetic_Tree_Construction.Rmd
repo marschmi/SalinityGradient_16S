@@ -29,12 +29,11 @@ The goal is to make a phylogenetic tree
 4. Create a maximum likelihood tree. 
 
 ## Inputs 
-1. `raw_preprocessed_physeq`
+1. Our previously pre-processed phyloseq object that has chloroplasts, mitochondria, reverse complements, and negative controls removed, which is located in `data/03_PreProcessing/raw_preprocessed_physeq`
 
 ## Outputs 
-1. MAAFT_aligned_ASV.fasta
-2. ASVs_unrooted.tree
-
+1. The **aligned 16S rRNA gene sequences**, which is the input to the phylogenetic tree. We will save our alignment to `data/04_PhylogeneticTree/MAAFT_aligned_ASV.fasta`
+2. The **calculated phylogenetic tree file**, which is the input to the phylogenetic tree. We will save our alignment to`data/04_PhylogeneticTree/ASVs_unrooted.tree`
 
 # Setup 
 
@@ -94,7 +93,7 @@ head(asv_seq_fasta)
 
 # Write to a fasta file 
 write(asv_seq_fasta, 
-      file = "data/04_Phylogenetic_Tree/preprocessed_ASVs.fasta")
+      file = "data/04_PhylogeneticTree/preprocessed_ASVs.fasta")
 
 ```
 
@@ -114,10 +113,6 @@ To test shell code via RMarkdown:
 # First provide the path to MAFFT
 export PATH=/programs/mafft/bin:$PATH
 
-# change directories to provide the fasta file we made above 
-cd data/04_Phylogenetic_Tree/
-pwd
-
 # Where am I? 
 echo "The working directory is $PWD"
 
@@ -125,10 +120,7 @@ echo "The working directory is $PWD"
 RANDOM=238428
 
 # Now, actually run MAFFT
-/programs/mafft/bin/mafft --auto preprocessed_ASVs.fasta > MAFFT_aligned_ASVs.fasta
-
-# Where am I? 
-echo "The working directory is $PWD"
+/programs/mafft/bin/mafft --auto data/04_PhylogeneticTree/preprocessed_ASVs.fasta > data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta
 ```
 
 # FastTree2
@@ -141,10 +133,6 @@ echo "The working directory is $PWD"
 # Provide export path to fasttree 
 export PATH=/programs/FastTree-2.1.11:$PATH
 
-# change directories to provide the fasta file we made above 
-cd data/04_Phylogenetic_Tree/
-echo "The working directory is $PWD"
-
 # Run Fasttree to generate phylogenetic tree 
 # parameters: 
     # -nt = indicates it's a nucleotide alignment
@@ -153,11 +141,7 @@ echo "The working directory is $PWD"
     # -log = output a log file 
     # input alignment file 
     # specify the output tree file 
-FastTree -nt -gtr -fastest -log FastTree.log MAFFT_aligned_ASVs.fasta > ASVs_unrooted.tree
-
-# Change back to the main directory 
-cd ../../
-echo "The working directory is $PWD"
+FastTree -nt -gtr -fastest -log data/04_PhylogeneticTree/FastTree.log data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta > data/04_PhylogeneticTree/ASVs_unrooted.tree
 ```
 
 

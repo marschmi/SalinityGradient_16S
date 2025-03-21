@@ -36,7 +36,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       fig.align = "center",
                       # Always relevant to the document directory 
                       # send any figure output to this folder 
-                      fig.path = "../figures/04_Phylogenetic_Tree/",
+                      fig.path = "../figures/04_PhylogeneticTree/",
                       warning = FALSE) 
 ```
 
@@ -70,7 +70,7 @@ load("data/03_PreProcessing/raw_preprocessed_physeq.RData")
 raw_preprocessed_physeq
 
 # Load in the tree! 
-unrooted_tree <- read.tree("data/04_Phylogenetic_Tree/ASVs_unrooted.tree")
+unrooted_tree <- read.tree("data/04_PhylogeneticTree/ASVs_unrooted.tree")
 unrooted_tree
 str(unrooted_tree)
 ```
@@ -100,6 +100,7 @@ kingdom_tree <-
   geom_tippoint(mapping = aes(color = Kingdom)) + 
   # add a title
   labs(title = "Unrooted Tree") + 
+  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey")) + 
   # Move the legend to the bottom of the tree 
   theme(legend.position = "bottom")
 
@@ -116,7 +117,7 @@ kingdom_node_tree <-
 kingdom_node_tree
 ```
 
-# Root tree from the Archaea 
+# Archaeal Root
 
 ## Create the Rooted Archaeal Tree 
 
@@ -137,17 +138,18 @@ viewClade(kingdom_node_tree, archaea_node)
 
 # Let's highlight! 
 node_3394 <- 
-  ggtree(unrooted_tree) + 
-  geom_tippoint(mapping = aes(color = "Kingdom"), size = 1.5) + 
-  geom_text(aes(label = node), hjust = -0.7, vjust = -0.2, size = 2) +
-  geom_highlight(node = archaea_node, fill = "dodgerblue")
+  ggtree(unrooted_physeq) + 
+  geom_tippoint(mapping = aes(color = Kingdom), size = 1.5) + 
+  #geom_text(aes(label = node), hjust = -0.7, vjust = -0.2, size = 2) +
+  geom_highlight(node = archaea_node, fill = "goldenrod1") + 
+  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # Visualize it 
 node_3394
 
 # Root it! 
 archaea_root_tree <-
-  ape::root(unrooted_tree, node = archaea_node, resolve.root = TRUE)
+  ape::root(phy_tree(unrooted_physeq), node = archaea_node, resolve.root = TRUE)
 
 # Check it! 
 is.rooted(archaea_root_tree)
@@ -165,7 +167,8 @@ archaea_root_physeq <-
 # Plot rooted simple tree with no text 
 archaea_rooted_simple <- 
   ggtree(archaea_root_physeq) + 
-  geom_tippoint(aes(color = Kingdom))
+  geom_tippoint(aes(color = Kingdom)) + 
+  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # View it! 
 archaea_rooted_simple
@@ -174,25 +177,250 @@ archaea_rooted_simple
 archaea_rooted_text <- 
   ggtree(archaea_root_physeq) +
   geom_tippoint(aes(color = Kingdom)) + 
-  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5) + 
+  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # View it! 
 archaea_rooted_text
 ```
 
-# Evaluate Long Branches 
+## Evaluate Long Branches
 
-```{r evaluate-long-branches}
-# Zoom in on a specific node 
-viewClade(archaea_rooted_text, 3309)
+This part will get a little manual, however, this is an important step along the way to ensure that we are feeling certain that our data quality is good. 
+
+```{r evaluate-archaea-rooted-long-branches}
+# View a specific clade
+# Zoom in on node that looks potentially suspicious
+viewClade(archaea_rooted_text + 
+          labs(title = "Archaea Rooted Tree: Node 703"), 
+          node = 703)
+# This plot is too zoomed in! Let's try to zoom out by looking at ancestors
+# Lets see its ancestors, which will tell us each node as it steps up. 
+# It's ideal to look a couple nodes up but not too far!
+ancestor(archaea_root_tree, 703) 
+
+# Let's evaluate 3309!
+viewClade(archaea_rooted_text, 3309) 
+
+# Or if there are two nodes that we can see we can find its MRCA
+## create tibble of tree to identify offspring
+tree_tib <- as_tibble(archaea_root_physeq@phy_tree)
+
+# lets look at the long branch
+MRCA(archaea_root_tree, .node1 = 703, .node2 = 711) #3309
 
 
-# Who are the ancestors? 
-ancestor(archaea_root_tree, 703)
+# Actually we see the node 3316 is better that has the long node 703
+viewClade(archaea_rooted_text, 3316) 
 
-# Look at the most recent common ancestor
-MRCA(archaea_root_tree, .node1 = 703, .node2 = 702)
+## create dataframe to view ASVs and taxa info and to pull the ASVs
+node3316 <- offspring(tree_tib, 3316, tiponly = TRUE) %>% 
+  as.data.frame() %>% pull(label)
+
+node3316_df <- as.data.frame(archaea_root_physeq@tax_table) %>% filter(ASV %in% node3316) %>% filter(Kingdom == "Bacteria" | is.na(Kingdom))
+
+# look at counts of each phylum
+node3316_df %>% 
+  count(Kingdom)
+
+# look at counts of the ASVs
+archaea_root_physeq %>%
+  subset_taxa(., ASV == "ASV_2618") %>%
+  otu_table() %>%
+  data.frame() %>%
+  colSums()
+
+# Lets BLAST our sequences to investigate if they are real or not
+node3316_df 
 ```
+We see that the two ASVs that are in our sample. ASV_1917 is node 702 and ASV_2618 is the longer node that is node 703
+
+Our tree looks legitimate and we do not need to remove ASVs that were found in node 3316. BLASTing the two ASVs found that node 703 is long but it is a real ASV. Thus we do not need to remove anything.
+
+We accidentally did too good of a job at removing contaminants in the previous step:)
+
+## Prune your tree
+Note that our tree actually looks quite nice and we do not need to prune any ASVs out. But if you find in your own data set that you have ASVs that need to be removed here is the code for how to do that!
+```{r prune-ASVs, eval = FALSE}
+# Function from Joey McMurdie: https://github.com/joey711/phyloseq/issues/652
+pop_taxa = function(physeq, badTaxa){
+  allTaxa <-  taxa_names(physeq)
+  allTaxa <- allTaxa[!(allTaxa %in% badTaxa)]
+  return(prune_taxa(allTaxa, physeq))}
+
+# Let's use the pop_taxa function :) 
+# Recreate a phyloseq object without your unwanted ASV or node
+# Lets use an arbitrary ASV
+archaea_physeq_rmASV2618 <- 
+  archaea_root_physeq %>%
+  pop_taxa(., "ASV_2618")
+
+# Intuition Check
+ntaxa(archaea_root_physeq) - ntaxa(archaea_physeq_rmASV2618) 
+
+# Visually inspect 
+ggtree(archaea_physeq_rmASV2618) + 
+  geom_tippoint(mapping = aes(color = Kingdom))
+```
+Note: this is just an example of how to remove one ASV. In our case ASV_2618 is not a bad ASV and in fact it is real. 
+
+## Plot Archaea rooted final tree
+```{r plot-archaea-final}
+# Plot rooted simple tree with no text
+archaea_rooted_simple <- ggtree(archaea_root_physeq) +
+  geom_tippoint(aes(color = Kingdom))  
+
+archaea_rooted_simple
+
+# Plot rooted tree with text
+archaea_rooted_text <- ggtree(archaea_root_physeq) +
+  geom_tippoint(aes(color = Kingdom)) + 
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+
+archaea_rooted_text
+```
+
+
+Now we can go on and save to a new phyloseq object. Continue to line 280.
+
+
+# Midrooting your tree 
+If your project's data does not have Archaea or a specified outgroup you can midroot your tree. Midpoint rooting calculates tip to tip distances and then places the root halfway between the two longest tips.
+
+**Do not complete this step if you have Archaea in your data set**
+
+**If you need to midroot your tree:**
+1. investigate and pull the ASVs in your long branches and BLAST to confirm if these are real bacterial ASVs.
+
+2. Remove any unwanted ASVs using the prune function. Long nodes (branches) are outliers. If we keep them in then we can introduce bias into the tree reconstruction creating the "long branch attraction" error where distantly related taxa appear closely related due to high rate of evolution on long branches. We will be evaluating the long branch (node = 2618) just as we did above with the Archaea rooted tree
+
+If you **do not** have Archaea and **have** removed your long branches, then you may follow the code below to midroot your tree.
+### Remove any long branches from our unrooted tree
+```{r evaluate-unrooted-tree}
+# View a specific clade
+
+# Zoom in on node that looks potentially suspicious
+viewClade(kingdom_node_tree + 
+          labs(title = "Unrooted Tree: Node 703"), 
+          node = 703)
+
+# Lets see its ancestors
+ancestor(unrooted_tree, 703)
+
+# Or if there are two nodes that we can see we can find its MRCA
+## create tibble of tree to identify offspring
+tree_tib_unroot <- as_tibble(unrooted_physeq@phy_tree)
+
+# lets look at the really long branch with a bunch of NAs
+MRCA(unrooted_tree, .node1 = 703, .node2 = 702) #3315
+
+viewClade(kingdom_node_tree, 3315) 
+
+# Actually we see the node 3316 is better that has the long node 703
+viewClade(kingdom_node_tree, 3315) 
+
+## create dataframe to view ASVs and taxa info and to pull the ASVs
+node3315_unrooted <- offspring(tree_tib_unroot, 3315, tiponly = TRUE) %>% 
+  as.data.frame() %>% pull(label)
+
+node3315_unrooted_df <- as.data.frame(archaea_root_physeq@tax_table) %>% filter(ASV %in% node3315_unrooted) %>% filter(Kingdom == "Bacteria" | is.na(Kingdom))
+
+# look at counts of each phylum
+node3315_unrooted_df %>% 
+  count(Kingdom)
+
+# look at counts of the ASVs
+unrooted_physeq %>%
+  subset_taxa(., ASV == "ASV_2618") %>%
+  otu_table() %>%
+  data.frame() %>%
+  colSums()
+
+# Lets BLAST our sequences to investigate if they are real or not
+node3315_unrooted_df 
+```
+ASV_2618 = suspect. Let's explore this ASV more!
+
+When we BLASTed we see that both hits are legit bacteria 16S hits. Therefore, the rest of our tree looks good and we do not need to remove anything.
+
+### Midroot our tree
+```{r mid-root-tree}
+# Is the tree rooted?
+new_unrooted_tree <- phy_tree(unrooted_tree)
+
+# Check to see if tree is rooted.. expect it to be false
+is.rooted(new_unrooted_tree)
+
+# Let's midpoint root the tree
+midpoint_rooted_tree <- midpoint.root(new_unrooted_tree)
+
+# Is the new tree rooted? Should be TRUE!
+is.rooted(midpoint_rooted_tree)
+
+#Assign to a new phyloseq object: merging subsetted phyloseq with the new rooted tree
+
+# We will be merging our phyloseq object that has been midrooted. Below is an example of how to create the phyloseq object removing your bad taxa and then saving it to a new phyloseq object. 
+
+# Merge tree with our raw_preprocessed physeq
+midpoint_rooted_physeq <- merge_phyloseq(raw_preprocessed_physeq, midpoint_rooted_tree)
+
+
+# This is extra code that we will not be using in class but may be useful to you in your own data analysis:)
+# 1. Create the phyloseq object without bad ASV
+physeq_rm2618 <- 
+  raw_preprocessed_physeq %>%
+  subset_taxa(ASV != "ASV_2618")
+
+# Merge tree with the new physeq_rm456
+midroot_physeq_rm2618 <- 
+  merge_phyloseq(physeq_rm2618, midpoint_rooted_tree)
+midroot_physeq_rm2618
+
+# Quick inspection of tree 
+ggtree(midroot_physeq_rm2618) + 
+  geom_tippoint(mapping = aes(color = Kingdom))
+```
+Now that we have midrooted our tree, lets view our final tree
+
+## Plot Final Midrooted Tree
+```{r plot-midrooted-tree}
+#View our final tree
+
+# Plot midrooted simple tree with no text
+mid_rooted_simple <- ggtree(midpoint_rooted_physeq) +
+  geom_tippoint(aes(color = Kingdom))  
+
+mid_rooted_simple
+
+# Plot rooted tree with text
+mid_rooted_text <- ggtree(midpoint_rooted_physeq) +
+  geom_tippoint(aes(color = Kingdom)) + 
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+
+mid_rooted_text
+
+```
+
+
+## Save phyloseq object
+Note that because I have not removed any taxa, I will take my archaea_root_physeq and rename it into phytree_preprocessed_physeq object. If you have rooted your tree using the midroot, then please use your midroot_physeq object and save that into phytree_preprocessed_physeq.
+
+If you have removed your bad taxa and have midrooted your tree please note lines 269-271. These lines will be commented out but serve to provide you an understanding of how we can save our phyloseq objects with our midrooted tree.
+```{r save-phyloseq-object}
+# lets rename our phyloseq object
+phytree_preprocessed_physeq <- archaea_root_physeq
+
+# Save both phyloseq objects with our tree object to one .RData file 
+# save(list = c("unrooted_physeq_rm2618", "midroot_physeq_rm2618"),
+#      file = "data/04_Phylogenetic_Tree/phytree_preprocessed_physeq.RData")
+
+
+# now lets save our preprocessed phyloseq object
+save(phytree_preprocessed_physeq, file = "data/04_Phylogenetic_Tree/phytree_preprocessed_physeq.RData")
+```
+Now that we have our tree, we can go forth and begin our next analysis!
+
+
 
 
 

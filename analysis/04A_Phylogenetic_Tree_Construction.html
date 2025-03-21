@@ -1697,14 +1697,21 @@ font-size: 0.95em;
 <div id="inputs" class="section level2">
 <h2>Inputs</h2>
 <ol style="list-style-type: decimal">
-<li><code>raw_preprocessed_physeq</code></li>
+<li>Our previously pre-processed phyloseq object that has chloroplasts,
+mitochondria, reverse complements, and negative controls removed, which
+is located in
+<code>data/03_PreProcessing/raw_preprocessed_physeq</code></li>
 </ol>
 </div>
 <div id="outputs" class="section level2">
 <h2>Outputs</h2>
 <ol style="list-style-type: decimal">
-<li>MAAFT_aligned_ASV.fasta</li>
-<li>ASVs_unrooted.tree</li>
+<li>The <strong>aligned 16S rRNA gene sequences</strong>, which is the
+input to the phylogenetic tree. We will save our alignment to
+<code>data/04_PhylogeneticTree/MAAFT_aligned_ASV.fasta</code></li>
+<li>The <strong>calculated phylogenetic tree file</strong>, which is the
+input to the phylogenetic tree. We will save our alignment
+to<code>data/04_PhylogeneticTree/ASVs_unrooted.tree</code></li>
 </ol>
 </div>
 </div>
@@ -1772,7 +1779,7 @@ which we will record at the end of the script.</p>
 ## [6] &quot;AAGGTCCAAGCGTTAATCGGAATTACTGGGCGTAAAGCGCGCGTAGGTGGTTTATTAAGTTGGGTGTGAAAGCCCCGGGCTCAACCTGGGAACTGCATCCAAAACTGATTCACTAGAGTACGAAAGAGGGAGGTAGAATTCACAGTGTAGCGGTGGAATGCGTAGATATTGTGAAGAATACCAATGGCGAAGGCAGCCTCCTGGTTCTGTACTGACACTGAGGTGCGAAAGCGTGGGTAGCGAAC&quot;</code></pre>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="co"># Write to a fasta file </span></span>
 <span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a><span class="fu">write</span>(asv_seq_fasta, </span>
-<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>      <span class="at">file =</span> <span class="st">&quot;data/04_Phylogenetic_Tree/preprocessed_ASVs.fasta&quot;</span>)</span></code></pre></div>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>      <span class="at">file =</span> <span class="st">&quot;data/04_PhylogeneticTree/preprocessed_ASVs.fasta&quot;</span>)</span></code></pre></div>
 </div>
 <div id="run-alignment-with-maaft" class="section level1">
 <h1>Run Alignment with MAAFT</h1>
@@ -1786,23 +1793,15 @@ send line-by-line code - <strong>Windows:</strong> <code>control</code>
 <span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="co"># First provide the path to MAFFT</span></span>
 <span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span>/programs/mafft/bin:<span class="va">$PATH</span></span>
 <span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># change directories to provide the fasta file we made above </span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="bu">cd</span> data/04_Phylogenetic_Tree/</span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="bu">pwd</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="co"># Where am I? </span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;The working directory is </span><span class="va">$PWD</span><span class="st">&quot;</span></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="co"># Set a seed for consistency and reproducibility </span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="va">RANDOM</span><span class="op">=</span>238428</span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a></span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="co"># Now, actually run MAFFT</span></span>
-<span id="cb14-16"><a href="#cb14-16" tabindex="-1"></a><span class="ex">/programs/mafft/bin/mafft</span> <span class="at">--auto</span> preprocessed_ASVs.fasta <span class="op">&gt;</span> MAFFT_aligned_ASVs.fasta</span>
-<span id="cb14-17"><a href="#cb14-17" tabindex="-1"></a></span>
-<span id="cb14-18"><a href="#cb14-18" tabindex="-1"></a><span class="co"># Where am I? </span></span>
-<span id="cb14-19"><a href="#cb14-19" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;The working directory is </span><span class="va">$PWD</span><span class="st">&quot;</span></span></code></pre></div>
-<pre><code>## /local/workdir/mls528/SalinityGradient_16S/data/04_Phylogenetic_Tree
-## The working directory is /local/workdir/mls528/SalinityGradient_16S/data/04_Phylogenetic_Tree
+<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="co"># Where am I? </span></span>
+<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;The working directory is </span><span class="va">$PWD</span><span class="st">&quot;</span></span>
+<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a></span>
+<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="co"># Set a seed for consistency and reproducibility </span></span>
+<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="va">RANDOM</span><span class="op">=</span>238428</span>
+<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="co"># Now, actually run MAFFT</span></span>
+<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="ex">/programs/mafft/bin/mafft</span> <span class="at">--auto</span> data/04_PhylogeneticTree/preprocessed_ASVs.fasta <span class="op">&gt;</span> data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta</span></code></pre></div>
+<pre><code>## The working directory is /local/workdir/mls528/SalinityGradient_16S
 ## nthread = 0
 ## nthreadpair = 0
 ## nthreadtb = 0
@@ -3473,9 +3472,7 @@ STEP  2601 / 2604  d h
 ## 
 ## The default gap scoring scheme has been changed in version 7.110 (2013 Oct).
 ## It tends to insert more gaps into gap-rich regions than previous versions.
-## To disable this change, add the --leavegappyregion option.
-## 
-## The working directory is /local/workdir/mls528/SalinityGradient_16S/data/04_Phylogenetic_Tree</code></pre>
+## To disable this change, add the --leavegappyregion option.</code></pre>
 </div>
 <div id="fasttree2" class="section level1">
 <h1>FastTree2</h1>
@@ -3486,215 +3483,214 @@ STEP  2601 / 2604  d h
 <span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="co"># Provide export path to fasttree </span></span>
 <span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="bu">export</span> <span class="va">PATH</span><span class="op">=</span>/programs/FastTree-2.1.11:<span class="va">$PATH</span></span>
 <span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a></span>
-<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="co"># change directories to provide the fasta file we made above </span></span>
-<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a><span class="bu">cd</span> data/04_Phylogenetic_Tree/</span>
-<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;The working directory is </span><span class="va">$PWD</span><span class="st">&quot;</span></span>
-<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a></span>
-<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a><span class="co"># Run Fasttree to generate phylogenetic tree </span></span>
-<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a><span class="co"># parameters: </span></span>
-<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>    <span class="co"># -nt = indicates it&#39;s a nucleotide alignment</span></span>
-<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>    <span class="co"># -gtr = generalized time reversible substitution model </span></span>
-<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>    <span class="co"># -fastest speed up the model, reduce memory usage (recommended for datasets that have &gt;50,000)</span></span>
-<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a>    <span class="co"># -log = output a log file </span></span>
-<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a>    <span class="co"># input alignment file </span></span>
-<span id="cb16-19"><a href="#cb16-19" tabindex="-1"></a>    <span class="co"># specify the output tree file </span></span>
-<span id="cb16-20"><a href="#cb16-20" tabindex="-1"></a><span class="ex">FastTree</span> <span class="at">-nt</span> <span class="at">-gtr</span> <span class="at">-fastest</span> <span class="at">-log</span> FastTree.log MAFFT_aligned_ASVs.fasta <span class="op">&gt;</span> ASVs_unrooted.tree</span>
-<span id="cb16-21"><a href="#cb16-21" tabindex="-1"></a></span>
-<span id="cb16-22"><a href="#cb16-22" tabindex="-1"></a><span class="co"># Change back to the main directory </span></span>
-<span id="cb16-23"><a href="#cb16-23" tabindex="-1"></a><span class="bu">cd</span> ../../</span>
-<span id="cb16-24"><a href="#cb16-24" tabindex="-1"></a><span class="bu">echo</span> <span class="st">&quot;The working directory is </span><span class="va">$PWD</span><span class="st">&quot;</span></span></code></pre></div>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a><span class="co"># Run Fasttree to generate phylogenetic tree </span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a><span class="co"># parameters: </span></span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>    <span class="co"># -nt = indicates it&#39;s a nucleotide alignment</span></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>    <span class="co"># -gtr = generalized time reversible substitution model </span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>    <span class="co"># -fastest speed up the model, reduce memory usage (recommended for datasets that have &gt;50,000)</span></span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>    <span class="co"># -log = output a log file </span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>    <span class="co"># input alignment file </span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>    <span class="co"># specify the output tree file </span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a><span class="ex">FastTree</span> <span class="at">-nt</span> <span class="at">-gtr</span> <span class="at">-fastest</span> <span class="at">-log</span> data/04_PhylogeneticTree/FastTree.log data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta <span class="op">&gt;</span> data/04_PhylogeneticTree/ASVs_unrooted.tree</span></code></pre></div>
 <pre><code>## The working directory is /local/workdir/mls528/SalinityGradient_16S
-## The working directory is /local/workdir/mls528/SalinityGradient_16S/data/04_Phylogenetic_Tree
 ## FastTree Version 2.1.11 SSE3
-## Alignment: MAFFT_aligned_ASVs.fasta
+## Alignment: data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta
 ## Nucleotide distances: Jukes-Cantor Joins: balanced Support: SH-like 1000
 ## Search: Fastest+2nd +NNI +SPR (2 rounds range 10) +ML-NNI opt-each=1
 ## TopHits: 1.00*sqrtN close=default refresh=0.50
 ## ML Model: Generalized Time-Reversible, CAT approximation with 20 rate categories
-##       0.10 seconds: Top hits for   1415 of   2605 seqs (at seed    900)
-##       0.20 seconds: Top hits for   2474 of   2605 seqs (at seed   2100)
-##       0.31 seconds: Joined    300 of   2602
-##       0.42 seconds: Joined    600 of   2602
-##       0.54 seconds: Joined    900 of   2602
-##       0.65 seconds: Joined   1100 of   2602
-##       0.77 seconds: Joined   1500 of   2602
-##       0.88 seconds: Joined   1800 of   2602
-##       1.01 seconds: Joined   2100 of   2602
-##       1.13 seconds: Joined   2400 of   2602
-## Initial topology in 1.20 seconds
+##       0.10 seconds: Top hits for   1366 of   2605 seqs (at seed    800)
+##       0.20 seconds: Top hits for   2389 of   2605 seqs (at seed   1800)
+##       0.33 seconds: Joined    300 of   2602
+##       0.45 seconds: Joined    600 of   2602
+##       0.57 seconds: Joined    900 of   2602
+##       0.69 seconds: Joined   1100 of   2602
+##       0.81 seconds: Joined   1500 of   2602
+##       0.93 seconds: Joined   1800 of   2602
+##       1.06 seconds: Joined   2100 of   2602
+##       1.19 seconds: Joined   2400 of   2602
+## Initial topology in 1.26 seconds
 ## Refining topology: 45 rounds ME-NNIs, 2 rounds ME-SPRs, 23 rounds ML-NNIs
-##       1.24 seconds: ME NNI round 1 of 45, 2101 of 2603 splits, 438 changes (max delta 0.139)
-##       1.34 seconds: ME NNI round 4 of 45, 301 of 2603 splits, 24 changes (max delta 0.012)
-##       1.45 seconds: SPR round   1 of   2, 101 of 5208 nodes
-##       1.58 seconds: SPR round   1 of   2, 501 of 5208 nodes
-##       1.68 seconds: SPR round   1 of   2, 801 of 5208 nodes
-##       1.81 seconds: SPR round   1 of   2, 1201 of 5208 nodes
-##       1.94 seconds: SPR round   1 of   2, 1601 of 5208 nodes
-##       2.06 seconds: SPR round   1 of   2, 2001 of 5208 nodes
-##       2.17 seconds: SPR round   1 of   2, 2301 of 5208 nodes
-##       2.29 seconds: SPR round   1 of   2, 2701 of 5208 nodes
-##       2.42 seconds: SPR round   1 of   2, 3101 of 5208 nodes
-##       2.54 seconds: SPR round   1 of   2, 3501 of 5208 nodes
-##       2.67 seconds: SPR round   1 of   2, 3901 of 5208 nodes
-##       2.78 seconds: SPR round   1 of   2, 4201 of 5208 nodes
-##       2.90 seconds: SPR round   1 of   2, 4601 of 5208 nodes
-##       3.01 seconds: SPR round   1 of   2, 4901 of 5208 nodes
-##       3.11 seconds: SPR round   1 of   2, 5201 of 5208 nodes
-##       3.21 seconds: ME NNI round 18 of 45, 101 of 2603 splits, 3 changes (max delta 0.002)
-##       3.32 seconds: SPR round   2 of   2, 301 of 5208 nodes
-##       3.46 seconds: SPR round   2 of   2, 701 of 5208 nodes
-##       3.58 seconds: SPR round   2 of   2, 1101 of 5208 nodes
-##       3.71 seconds: SPR round   2 of   2, 1501 of 5208 nodes
-##       3.84 seconds: SPR round   2 of   2, 1901 of 5208 nodes
-##       3.96 seconds: SPR round   2 of   2, 2301 of 5208 nodes
-##       4.09 seconds: SPR round   2 of   2, 2701 of 5208 nodes
-##       4.20 seconds: SPR round   2 of   2, 3001 of 5208 nodes
-##       4.30 seconds: SPR round   2 of   2, 3301 of 5208 nodes
-##       4.40 seconds: SPR round   2 of   2, 3601 of 5208 nodes
-##       4.52 seconds: SPR round   2 of   2, 4001 of 5208 nodes
-##       4.63 seconds: SPR round   2 of   2, 4301 of 5208 nodes
-##       4.75 seconds: SPR round   2 of   2, 4701 of 5208 nodes
-##       4.87 seconds: SPR round   2 of   2, 5101 of 5208 nodes
-##       4.98 seconds: ME NNI round 32 of 45, 801 of 2603 splits, 3 changes (max delta 0.002)
-## Total branch-length 111.237 after 5.07 sec
-##       5.08 seconds: ML Lengths 1 of 2603 splits
-##       5.18 seconds: ML Lengths 701 of 2603 splits
-##       5.30 seconds: ML Lengths 1401 of 2603 splits
-##       5.40 seconds: ML Lengths 2101 of 2603 splits
-##       5.54 seconds: ML NNI round 1 of 23, 101 of 2603 splits, 19 changes (max delta 12.158)
-##       5.66 seconds: ML NNI round 1 of 23, 301 of 2603 splits, 47 changes (max delta 12.158)
-##       5.76 seconds: ML NNI round 1 of 23, 501 of 2603 splits, 80 changes (max delta 12.158)
-##       5.87 seconds: ML NNI round 1 of 23, 701 of 2603 splits, 117 changes (max delta 12.158)
-##       5.98 seconds: ML NNI round 1 of 23, 901 of 2603 splits, 146 changes (max delta 12.158)
-##       6.10 seconds: ML NNI round 1 of 23, 1101 of 2603 splits, 183 changes (max delta 12.158)
-##       6.21 seconds: ML NNI round 1 of 23, 1301 of 2603 splits, 219 changes (max delta 12.158)
-##       6.32 seconds: ML NNI round 1 of 23, 1501 of 2603 splits, 256 changes (max delta 12.639)
-##       6.44 seconds: ML NNI round 1 of 23, 1701 of 2603 splits, 288 changes (max delta 12.639)
-##       6.55 seconds: ML NNI round 1 of 23, 1901 of 2603 splits, 328 changes (max delta 12.639)
-##       6.66 seconds: ML NNI round 1 of 23, 2101 of 2603 splits, 365 changes (max delta 12.639)
-##       6.78 seconds: ML NNI round 1 of 23, 2301 of 2603 splits, 407 changes (max delta 12.639)
-##       6.89 seconds: ML NNI round 1 of 23, 2501 of 2603 splits, 440 changes (max delta 12.639)
-## ML-NNI round 1: LogLk = -157943.736 NNIs 460 max delta 12.64 Time 6.96
-##       7.49 seconds: Optimizing GTR model, step 2 of 12
-##       7.84 seconds: Optimizing GTR model, step 3 of 12
-##       8.19 seconds: Optimizing GTR model, step 4 of 12
-##       8.79 seconds: Optimizing GTR model, step 5 of 12
-##       9.28 seconds: Optimizing GTR model, step 6 of 12
-##       9.70 seconds: Optimizing GTR model, step 7 of 12
-##      10.16 seconds: Optimizing GTR model, step 8 of 12
-##      10.47 seconds: Optimizing GTR model, step 9 of 12
-##      10.75 seconds: Optimizing GTR model, step 10 of 12
-##      11.14 seconds: Optimizing GTR model, step 11 of 12
-##      11.49 seconds: Optimizing GTR model, step 12 of 12
+##       1.29 seconds: ME NNI round 1 of 45, 1901 of 2603 splits, 401 changes (max delta 0.139)
+##       1.39 seconds: ME NNI round 3 of 45, 1901 of 2603 splits, 135 changes (max delta 0.040)
+##       1.52 seconds: SPR round   1 of   2, 101 of 5208 nodes
+##       1.65 seconds: SPR round   1 of   2, 501 of 5208 nodes
+##       1.76 seconds: SPR round   1 of   2, 801 of 5208 nodes
+##       1.87 seconds: SPR round   1 of   2, 1101 of 5208 nodes
+##       1.97 seconds: SPR round   1 of   2, 1401 of 5208 nodes
+##       2.09 seconds: SPR round   1 of   2, 1801 of 5208 nodes
+##       2.20 seconds: SPR round   1 of   2, 2101 of 5208 nodes
+##       2.30 seconds: SPR round   1 of   2, 2401 of 5208 nodes
+##       2.43 seconds: SPR round   1 of   2, 2801 of 5208 nodes
+##       2.53 seconds: SPR round   1 of   2, 3101 of 5208 nodes
+##       2.66 seconds: SPR round   1 of   2, 3501 of 5208 nodes
+##       2.76 seconds: SPR round   1 of   2, 3801 of 5208 nodes
+##       2.87 seconds: SPR round   1 of   2, 4101 of 5208 nodes
+##       3.00 seconds: SPR round   1 of   2, 4501 of 5208 nodes
+##       3.11 seconds: SPR round   1 of   2, 4801 of 5208 nodes
+##       3.21 seconds: SPR round   1 of   2, 5101 of 5208 nodes
+##       3.31 seconds: ME NNI round 17 of 45, 501 of 2603 splits, 0 changes
+##       3.43 seconds: SPR round   2 of   2, 201 of 5208 nodes
+##       3.53 seconds: SPR round   2 of   2, 501 of 5208 nodes
+##       3.64 seconds: SPR round   2 of   2, 801 of 5208 nodes
+##       3.77 seconds: SPR round   2 of   2, 1201 of 5208 nodes
+##       3.91 seconds: SPR round   2 of   2, 1601 of 5208 nodes
+##       4.03 seconds: SPR round   2 of   2, 2001 of 5208 nodes
+##       4.17 seconds: SPR round   2 of   2, 2401 of 5208 nodes
+##       4.30 seconds: SPR round   2 of   2, 2801 of 5208 nodes
+##       4.41 seconds: SPR round   2 of   2, 3101 of 5208 nodes
+##       4.51 seconds: SPR round   2 of   2, 3401 of 5208 nodes
+##       4.61 seconds: SPR round   2 of   2, 3701 of 5208 nodes
+##       4.74 seconds: SPR round   2 of   2, 4101 of 5208 nodes
+##       4.84 seconds: SPR round   2 of   2, 4401 of 5208 nodes
+##       4.97 seconds: SPR round   2 of   2, 4801 of 5208 nodes
+##       5.10 seconds: SPR round   2 of   2, 5201 of 5208 nodes
+##       5.20 seconds: ME NNI round 32 of 45, 2501 of 2603 splits, 4 changes (max delta 0.002)
+## Total branch-length 111.237 after 5.28 sec
+##       5.31 seconds: ML Lengths 201 of 2603 splits
+##       5.43 seconds: ML Lengths 901 of 2603 splits
+##       5.54 seconds: ML Lengths 1601 of 2603 splits
+##       5.65 seconds: ML Lengths 2301 of 2603 splits
+##       5.76 seconds: ML NNI round 1 of 23, 101 of 2603 splits, 19 changes (max delta 12.158)
+##       5.88 seconds: ML NNI round 1 of 23, 301 of 2603 splits, 47 changes (max delta 12.158)
+##       5.99 seconds: ML NNI round 1 of 23, 501 of 2603 splits, 80 changes (max delta 12.158)
+##       6.10 seconds: ML NNI round 1 of 23, 701 of 2603 splits, 117 changes (max delta 12.158)
+##       6.22 seconds: ML NNI round 1 of 23, 901 of 2603 splits, 146 changes (max delta 12.158)
+##       6.33 seconds: ML NNI round 1 of 23, 1101 of 2603 splits, 183 changes (max delta 12.158)
+##       6.45 seconds: ML NNI round 1 of 23, 1301 of 2603 splits, 219 changes (max delta 12.158)
+##       6.57 seconds: ML NNI round 1 of 23, 1501 of 2603 splits, 256 changes (max delta 12.639)
+##       6.68 seconds: ML NNI round 1 of 23, 1701 of 2603 splits, 288 changes (max delta 12.639)
+##       6.80 seconds: ML NNI round 1 of 23, 1901 of 2603 splits, 328 changes (max delta 12.639)
+##       6.91 seconds: ML NNI round 1 of 23, 2101 of 2603 splits, 365 changes (max delta 12.639)
+##       7.03 seconds: ML NNI round 1 of 23, 2301 of 2603 splits, 407 changes (max delta 12.639)
+##       7.15 seconds: ML NNI round 1 of 23, 2501 of 2603 splits, 440 changes (max delta 12.639)
+## ML-NNI round 1: LogLk = -157943.736 NNIs 460 max delta 12.64 Time 7.22
+##       7.77 seconds: Optimizing GTR model, step 2 of 12
+##       8.13 seconds: Optimizing GTR model, step 3 of 12
+##       8.49 seconds: Optimizing GTR model, step 4 of 12
+##       9.12 seconds: Optimizing GTR model, step 5 of 12
+##       9.63 seconds: Optimizing GTR model, step 6 of 12
+##      10.06 seconds: Optimizing GTR model, step 7 of 12
+##      10.53 seconds: Optimizing GTR model, step 8 of 12
+##      10.86 seconds: Optimizing GTR model, step 9 of 12
+##      11.15 seconds: Optimizing GTR model, step 10 of 12
+##      11.55 seconds: Optimizing GTR model, step 11 of 12
+##      11.91 seconds: Optimizing GTR model, step 12 of 12
 ## GTR Frequencies: 0.2659 0.1875 0.3394 0.2071
 ## GTR rates(ac ag at cg ct gt) 0.6782 1.7376 1.3936 0.5586 3.8887 1.0000
-##      11.84 seconds: ML Lengths 1 of 2603 splits
-##      11.95 seconds: ML Lengths 601 of 2603 splits
-##      12.06 seconds: ML Lengths 1201 of 2603 splits
-##      12.17 seconds: ML Lengths 1801 of 2603 splits
-##      12.29 seconds: ML Lengths 2401 of 2603 splits
-##      12.40 seconds: Site likelihoods with rate category 2 of 20
-##      12.51 seconds: Site likelihoods with rate category 5 of 20
-##      12.61 seconds: Site likelihoods with rate category 8 of 20
-##      12.72 seconds: Site likelihoods with rate category 11 of 20
-##      12.83 seconds: Site likelihoods with rate category 14 of 20
-##      12.94 seconds: Site likelihoods with rate category 17 of 20
-##      13.05 seconds: Site likelihoods with rate category 20 of 20
+##      12.27 seconds: ML Lengths 1 of 2603 splits
+##      12.37 seconds: ML Lengths 501 of 2603 splits
+##      12.49 seconds: ML Lengths 1101 of 2603 splits
+##      12.59 seconds: ML Lengths 1601 of 2603 splits
+##      12.71 seconds: ML Lengths 2201 of 2603 splits
+##      12.82 seconds: Site likelihoods with rate category 1 of 20
+##      12.94 seconds: Site likelihoods with rate category 4 of 20
+##      13.05 seconds: Site likelihoods with rate category 7 of 20
+##      13.16 seconds: Site likelihoods with rate category 10 of 20
+##      13.28 seconds: Site likelihoods with rate category 13 of 20
+##      13.39 seconds: Site likelihoods with rate category 16 of 20
+##      13.50 seconds: Site likelihoods with rate category 19 of 20
 ## Switched to using 20 rate categories (CAT approximation)
 ## Rate categories were divided by 1.074 so that average rate = 1.0
 ## CAT-based log-likelihoods may not be comparable across runs
 ## Use -gamma for approximate but comparable Gamma(20) log-likelihoods
-##      13.18 seconds: ML NNI round 2 of 23, 101 of 2603 splits, 11 changes (max delta 2.455)
-##      13.32 seconds: ML NNI round 2 of 23, 301 of 2603 splits, 40 changes (max delta 5.684)
-##      13.45 seconds: ML NNI round 2 of 23, 501 of 2603 splits, 63 changes (max delta 5.684)
-##      13.59 seconds: ML NNI round 2 of 23, 701 of 2603 splits, 88 changes (max delta 5.684)
-##      13.73 seconds: ML NNI round 2 of 23, 901 of 2603 splits, 115 changes (max delta 5.684)
-##      13.86 seconds: ML NNI round 2 of 23, 1101 of 2603 splits, 142 changes (max delta 6.208)
-##      14.00 seconds: ML NNI round 2 of 23, 1301 of 2603 splits, 166 changes (max delta 6.208)
-##      14.14 seconds: ML NNI round 2 of 23, 1501 of 2603 splits, 199 changes (max delta 6.208)
-##      14.27 seconds: ML NNI round 2 of 23, 1701 of 2603 splits, 221 changes (max delta 6.208)
-##      14.42 seconds: ML NNI round 2 of 23, 1901 of 2603 splits, 253 changes (max delta 7.076)
-##      14.56 seconds: ML NNI round 2 of 23, 2101 of 2603 splits, 281 changes (max delta 9.295)
-##      14.70 seconds: ML NNI round 2 of 23, 2301 of 2603 splits, 307 changes (max delta 9.295)
-##      14.83 seconds: ML NNI round 2 of 23, 2501 of 2603 splits, 331 changes (max delta 9.295)
-## ML-NNI round 2: LogLk = -131312.773 NNIs 340 max delta 9.29 Time 14.91
-##      14.97 seconds: ML NNI round 3 of 23, 101 of 2603 splits, 8 changes (max delta 1.666)
-##      15.10 seconds: ML NNI round 3 of 23, 301 of 2603 splits, 28 changes (max delta 2.511)
-##      15.23 seconds: ML NNI round 3 of 23, 501 of 2603 splits, 48 changes (max delta 3.496)
-##      15.36 seconds: ML NNI round 3 of 23, 701 of 2603 splits, 66 changes (max delta 3.496)
-##      15.50 seconds: ML NNI round 3 of 23, 901 of 2603 splits, 81 changes (max delta 5.367)
-##      15.63 seconds: ML NNI round 3 of 23, 1101 of 2603 splits, 100 changes (max delta 5.367)
-##      15.77 seconds: ML NNI round 3 of 23, 1301 of 2603 splits, 119 changes (max delta 6.339)
-##      15.91 seconds: ML NNI round 3 of 23, 1501 of 2603 splits, 141 changes (max delta 6.339)
-##      16.06 seconds: ML NNI round 3 of 23, 1701 of 2603 splits, 159 changes (max delta 6.339)
-## ML-NNI round 3: LogLk = -131136.759 NNIs 170 max delta 6.34 Time 16.19
-##      16.19 seconds: ML NNI round 4 of 23, 1 of 2603 splits
-##      16.30 seconds: ML NNI round 4 of 23, 201 of 2603 splits, 16 changes (max delta 8.652)
-##      16.44 seconds: ML NNI round 4 of 23, 401 of 2603 splits, 27 changes (max delta 8.652)
-##      16.57 seconds: ML NNI round 4 of 23, 601 of 2603 splits, 40 changes (max delta 8.652)
-##      16.70 seconds: ML NNI round 4 of 23, 801 of 2603 splits, 52 changes (max delta 8.652)
-##      16.83 seconds: ML NNI round 4 of 23, 1001 of 2603 splits, 65 changes (max delta 8.652)
-##      16.95 seconds: ML NNI round 4 of 23, 1201 of 2603 splits, 77 changes (max delta 8.652)
-## ML-NNI round 4: LogLk = -131065.132 NNIs 88 max delta 8.65 Time 17.08
-##      17.07 seconds: ML NNI round 5 of 23, 1 of 2603 splits
-##      17.20 seconds: ML NNI round 5 of 23, 201 of 2603 splits, 19 changes (max delta 2.947)
-##      17.32 seconds: ML NNI round 5 of 23, 401 of 2603 splits, 33 changes (max delta 3.537)
-##      17.46 seconds: ML NNI round 5 of 23, 601 of 2603 splits, 49 changes (max delta 3.537)
-## ML-NNI round 5: LogLk = -131031.554 NNIs 60 max delta 3.54 Time 17.60
-##      17.60 seconds: ML NNI round 6 of 23, 1 of 2603 splits
-##      17.72 seconds: ML NNI round 6 of 23, 201 of 2603 splits, 18 changes (max delta 0.692)
-##      17.85 seconds: ML NNI round 6 of 23, 401 of 2603 splits, 31 changes (max delta 1.226)
-## ML-NNI round 6: LogLk = -131016.781 NNIs 41 max delta 2.00 Time 17.95
-##      18.01 seconds: ML NNI round 7 of 23, 101 of 2603 splits, 7 changes (max delta 1.314)
-##      18.13 seconds: ML NNI round 7 of 23, 301 of 2603 splits, 19 changes (max delta 1.314)
-## ML-NNI round 7: LogLk = -131014.975 NNIs 28 max delta 1.31 Time 18.24
-##      18.24 seconds: ML NNI round 8 of 23, 1 of 2603 splits
-##      18.35 seconds: ML NNI round 8 of 23, 201 of 2603 splits, 15 changes (max delta 0.693)
-## ML-NNI round 8: LogLk = -131006.949 NNIs 25 max delta 2.19 Time 18.44
-##      18.49 seconds: ML NNI round 9 of 23, 101 of 2603 splits, 8 changes (max delta 1.314)
-## ML-NNI round 9: LogLk = -130997.234 NNIs 23 max delta 3.95 Time 18.62
-##      18.61 seconds: ML NNI round 10 of 23, 1 of 2603 splits
-##      18.73 seconds: ML NNI round 10 of 23, 201 of 2603 splits, 17 changes (max delta 0.693)
-## ML-NNI round 10: LogLk = -130991.782 NNIs 21 max delta 0.69 Time 18.77
-##      18.88 seconds: ML NNI round 11 of 23, 201 of 2603 splits, 16 changes (max delta 1.314)
-## ML-NNI round 11: LogLk = -130993.059 NNIs 19 max delta 1.31 Time 18.92
+##      13.67 seconds: ML NNI round 2 of 23, 101 of 2603 splits, 11 changes (max delta 2.455)
+##      13.81 seconds: ML NNI round 2 of 23, 301 of 2603 splits, 40 changes (max delta 5.684)
+##      13.96 seconds: ML NNI round 2 of 23, 501 of 2603 splits, 63 changes (max delta 5.684)
+##      14.09 seconds: ML NNI round 2 of 23, 701 of 2603 splits, 88 changes (max delta 5.684)
+##      14.23 seconds: ML NNI round 2 of 23, 901 of 2603 splits, 115 changes (max delta 5.684)
+##      14.37 seconds: ML NNI round 2 of 23, 1101 of 2603 splits, 142 changes (max delta 6.208)
+##      14.51 seconds: ML NNI round 2 of 23, 1301 of 2603 splits, 166 changes (max delta 6.208)
+##      14.65 seconds: ML NNI round 2 of 23, 1501 of 2603 splits, 199 changes (max delta 6.208)
+##      14.79 seconds: ML NNI round 2 of 23, 1701 of 2603 splits, 221 changes (max delta 6.208)
+##      14.93 seconds: ML NNI round 2 of 23, 1901 of 2603 splits, 253 changes (max delta 7.076)
+##      15.08 seconds: ML NNI round 2 of 23, 2101 of 2603 splits, 281 changes (max delta 9.295)
+##      15.23 seconds: ML NNI round 2 of 23, 2301 of 2603 splits, 307 changes (max delta 9.295)
+##      15.36 seconds: ML NNI round 2 of 23, 2501 of 2603 splits, 331 changes (max delta 9.295)
+## ML-NNI round 2: LogLk = -131312.773 NNIs 340 max delta 9.29 Time 15.44
+##      15.51 seconds: ML NNI round 3 of 23, 101 of 2603 splits, 8 changes (max delta 1.666)
+##      15.64 seconds: ML NNI round 3 of 23, 301 of 2603 splits, 28 changes (max delta 2.511)
+##      15.77 seconds: ML NNI round 3 of 23, 501 of 2603 splits, 48 changes (max delta 3.496)
+##      15.90 seconds: ML NNI round 3 of 23, 701 of 2603 splits, 66 changes (max delta 3.496)
+##      16.05 seconds: ML NNI round 3 of 23, 901 of 2603 splits, 81 changes (max delta 5.367)
+##      16.19 seconds: ML NNI round 3 of 23, 1101 of 2603 splits, 100 changes (max delta 5.367)
+##      16.33 seconds: ML NNI round 3 of 23, 1301 of 2603 splits, 119 changes (max delta 6.339)
+##      16.47 seconds: ML NNI round 3 of 23, 1501 of 2603 splits, 141 changes (max delta 6.339)
+##      16.63 seconds: ML NNI round 3 of 23, 1701 of 2603 splits, 159 changes (max delta 6.339)
+## ML-NNI round 3: LogLk = -131136.759 NNIs 170 max delta 6.34 Time 16.77
+##      16.76 seconds: ML NNI round 4 of 23, 1 of 2603 splits
+##      16.88 seconds: ML NNI round 4 of 23, 201 of 2603 splits, 16 changes (max delta 8.652)
+##      17.02 seconds: ML NNI round 4 of 23, 401 of 2603 splits, 27 changes (max delta 8.652)
+##      17.15 seconds: ML NNI round 4 of 23, 601 of 2603 splits, 40 changes (max delta 8.652)
+##      17.29 seconds: ML NNI round 4 of 23, 801 of 2603 splits, 52 changes (max delta 8.652)
+##      17.42 seconds: ML NNI round 4 of 23, 1001 of 2603 splits, 65 changes (max delta 8.652)
+##      17.55 seconds: ML NNI round 4 of 23, 1201 of 2603 splits, 77 changes (max delta 8.652)
+## ML-NNI round 4: LogLk = -131065.132 NNIs 88 max delta 8.65 Time 17.68
+##      17.67 seconds: ML NNI round 5 of 23, 1 of 2603 splits
+##      17.81 seconds: ML NNI round 5 of 23, 201 of 2603 splits, 19 changes (max delta 2.947)
+##      17.93 seconds: ML NNI round 5 of 23, 401 of 2603 splits, 33 changes (max delta 3.537)
+##      18.08 seconds: ML NNI round 5 of 23, 601 of 2603 splits, 49 changes (max delta 3.537)
+## ML-NNI round 5: LogLk = -131031.554 NNIs 60 max delta 3.54 Time 18.22
+##      18.22 seconds: ML NNI round 6 of 23, 1 of 2603 splits
+##      18.35 seconds: ML NNI round 6 of 23, 201 of 2603 splits, 18 changes (max delta 0.692)
+##      18.47 seconds: ML NNI round 6 of 23, 401 of 2603 splits, 31 changes (max delta 1.226)
+## ML-NNI round 6: LogLk = -131016.781 NNIs 41 max delta 2.00 Time 18.59
+##      18.58 seconds: ML NNI round 7 of 23, 1 of 2603 splits
+##      18.71 seconds: ML NNI round 7 of 23, 201 of 2603 splits, 13 changes (max delta 1.314)
+##      18.85 seconds: ML NNI round 7 of 23, 401 of 2603 splits, 27 changes (max delta 1.314)
+## ML-NNI round 7: LogLk = -131014.975 NNIs 28 max delta 1.31 Time 18.90
+##      18.95 seconds: ML NNI round 8 of 23, 101 of 2603 splits, 8 changes (max delta 0.692)
+##      19.09 seconds: ML NNI round 8 of 23, 301 of 2603 splits, 23 changes (max delta 2.189)
+## ML-NNI round 8: LogLk = -131006.949 NNIs 25 max delta 2.19 Time 19.12
+##      19.23 seconds: ML NNI round 9 of 23, 201 of 2603 splits, 16 changes (max delta 1.314)
+## ML-NNI round 9: LogLk = -130997.234 NNIs 23 max delta 3.95 Time 19.30
+##      19.35 seconds: ML NNI round 10 of 23, 101 of 2603 splits, 9 changes (max delta 0.692)
+## ML-NNI round 10: LogLk = -130991.782 NNIs 21 max delta 0.69 Time 19.46
+##      19.45 seconds: ML NNI round 11 of 23, 1 of 2603 splits
+##      19.58 seconds: ML NNI round 11 of 23, 201 of 2603 splits, 16 changes (max delta 1.314)
+## ML-NNI round 11: LogLk = -130993.059 NNIs 19 max delta 1.31 Time 19.62
 ## Turning off heuristics for final round of ML NNIs (converged)
-##      19.00 seconds: ML NNI round 12 of 23, 101 of 2603 splits, 7 changes (max delta 1.931)
-##      19.18 seconds: ML NNI round 12 of 23, 301 of 2603 splits, 17 changes (max delta 2.559)
-##      19.35 seconds: ML NNI round 12 of 23, 501 of 2603 splits, 23 changes (max delta 4.664)
-##      19.51 seconds: ML NNI round 12 of 23, 701 of 2603 splits, 27 changes (max delta 4.664)
-##      19.68 seconds: ML NNI round 12 of 23, 901 of 2603 splits, 33 changes (max delta 4.664)
-##      19.86 seconds: ML NNI round 12 of 23, 1101 of 2603 splits, 38 changes (max delta 4.664)
-##      20.03 seconds: ML NNI round 12 of 23, 1301 of 2603 splits, 46 changes (max delta 4.664)
-##      20.20 seconds: ML NNI round 12 of 23, 1501 of 2603 splits, 51 changes (max delta 4.664)
-##      20.37 seconds: ML NNI round 12 of 23, 1701 of 2603 splits, 54 changes (max delta 4.664)
-##      20.53 seconds: ML NNI round 12 of 23, 1901 of 2603 splits, 60 changes (max delta 5.753)
-##      20.70 seconds: ML NNI round 12 of 23, 2101 of 2603 splits, 67 changes (max delta 5.753)
-##      20.88 seconds: ML NNI round 12 of 23, 2301 of 2603 splits, 76 changes (max delta 5.753)
-##      21.05 seconds: ML NNI round 12 of 23, 2501 of 2603 splits, 80 changes (max delta 5.753)
-## ML-NNI round 12: LogLk = -130896.400 NNIs 81 max delta 5.75 Time 21.15 (final)
-##      21.17 seconds: ML Lengths 101 of 2603 splits
-##      21.28 seconds: ML Lengths 601 of 2603 splits
-##      21.39 seconds: ML Lengths 1101 of 2603 splits
-##      21.49 seconds: ML Lengths 1601 of 2603 splits
-##      21.60 seconds: ML Lengths 2101 of 2603 splits
-##      21.71 seconds: ML Lengths 2601 of 2603 splits
-## Optimize all lengths: LogLk = -130888.642 Time 21.73
-##      21.81 seconds: ML split tests for    100 of   2602 internal splits
-##      22.00 seconds: ML split tests for    300 of   2602 internal splits
-##      22.18 seconds: ML split tests for    500 of   2602 internal splits
-##      22.37 seconds: ML split tests for    700 of   2602 internal splits
-##      22.55 seconds: ML split tests for    900 of   2602 internal splits
-##      22.73 seconds: ML split tests for   1100 of   2602 internal splits
-##      22.92 seconds: ML split tests for   1300 of   2602 internal splits
-##      23.11 seconds: ML split tests for   1500 of   2602 internal splits
-##      23.29 seconds: ML split tests for   1700 of   2602 internal splits
-##      23.47 seconds: ML split tests for   1900 of   2602 internal splits
-##      23.66 seconds: ML split tests for   2100 of   2602 internal splits
-##      23.84 seconds: ML split tests for   2300 of   2602 internal splits
-##      24.03 seconds: ML split tests for   2500 of   2602 internal splits
-## Total time: 24.13 seconds Unique: 2605/2605 Bad splits: 18/2602 Worst delta-LogLk 1.320
-## The working directory is /local/workdir/mls528/SalinityGradient_16S</code></pre>
+##      19.70 seconds: ML NNI round 12 of 23, 101 of 2603 splits, 7 changes (max delta 1.931)
+##      19.89 seconds: ML NNI round 12 of 23, 301 of 2603 splits, 17 changes (max delta 2.559)
+##      20.07 seconds: ML NNI round 12 of 23, 501 of 2603 splits, 23 changes (max delta 4.664)
+##      20.24 seconds: ML NNI round 12 of 23, 701 of 2603 splits, 27 changes (max delta 4.664)
+##      20.42 seconds: ML NNI round 12 of 23, 901 of 2603 splits, 33 changes (max delta 4.664)
+##      20.60 seconds: ML NNI round 12 of 23, 1101 of 2603 splits, 38 changes (max delta 4.664)
+##      20.79 seconds: ML NNI round 12 of 23, 1301 of 2603 splits, 46 changes (max delta 4.664)
+##      20.97 seconds: ML NNI round 12 of 23, 1501 of 2603 splits, 51 changes (max delta 4.664)
+##      21.15 seconds: ML NNI round 12 of 23, 1701 of 2603 splits, 54 changes (max delta 4.664)
+##      21.33 seconds: ML NNI round 12 of 23, 1901 of 2603 splits, 60 changes (max delta 5.753)
+##      21.51 seconds: ML NNI round 12 of 23, 2101 of 2603 splits, 67 changes (max delta 5.753)
+##      21.70 seconds: ML NNI round 12 of 23, 2301 of 2603 splits, 76 changes (max delta 5.753)
+##      21.88 seconds: ML NNI round 12 of 23, 2501 of 2603 splits, 80 changes (max delta 5.753)
+## ML-NNI round 12: LogLk = -130896.400 NNIs 81 max delta 5.75 Time 22.00 (final)
+##      21.99 seconds: ML Lengths 1 of 2603 splits
+##      22.11 seconds: ML Lengths 501 of 2603 splits
+##      22.22 seconds: ML Lengths 1001 of 2603 splits
+##      22.34 seconds: ML Lengths 1501 of 2603 splits
+##      22.46 seconds: ML Lengths 2001 of 2603 splits
+##      22.58 seconds: ML Lengths 2501 of 2603 splits
+## Optimize all lengths: LogLk = -130888.642 Time 22.62
+##      22.71 seconds: ML split tests for    100 of   2602 internal splits
+##      22.81 seconds: ML split tests for    200 of   2602 internal splits
+##      23.01 seconds: ML split tests for    400 of   2602 internal splits
+##      23.11 seconds: ML split tests for    500 of   2602 internal splits
+##      23.31 seconds: ML split tests for    700 of   2602 internal splits
+##      23.41 seconds: ML split tests for    800 of   2602 internal splits
+##      23.61 seconds: ML split tests for   1000 of   2602 internal splits
+##      23.71 seconds: ML split tests for   1100 of   2602 internal splits
+##      23.81 seconds: ML split tests for   1200 of   2602 internal splits
+##      24.01 seconds: ML split tests for   1400 of   2602 internal splits
+##      24.12 seconds: ML split tests for   1500 of   2602 internal splits
+##      24.31 seconds: ML split tests for   1700 of   2602 internal splits
+##      24.42 seconds: ML split tests for   1800 of   2602 internal splits
+##      24.61 seconds: ML split tests for   2000 of   2602 internal splits
+##      24.81 seconds: ML split tests for   2200 of   2602 internal splits
+##      24.91 seconds: ML split tests for   2300 of   2602 internal splits
+##      25.01 seconds: ML split tests for   2400 of   2602 internal splits
+##      25.12 seconds: ML split tests for   2500 of   2602 internal splits
+##      25.22 seconds: ML split tests for   2600 of   2602 internal splits
+## Total time: 25.22 seconds Unique: 2605/2605 Bad splits: 18/2602 Worst delta-LogLk 1.320</code></pre>
 </div>
 <div id="final-info-for-reproducibility" class="section level1">
 <h1>Final info for Reproducibility</h1>
@@ -3703,11 +3699,11 @@ STEP  2601 / 2604  d h
 <div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="co"># Take the time now that we are at the end of the script</span></span>
 <span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a>end_time <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
 <span id="cb18-3"><a href="#cb18-3" tabindex="-1"></a>end_time </span></code></pre></div>
-<pre><code>## [1] &quot;2025-03-21 17:06:59 EDT&quot;</code></pre>
+<pre><code>## [1] &quot;2025-03-21 17:29:06 EDT&quot;</code></pre>
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" tabindex="-1"></a><span class="co"># Echo the elapsed time</span></span>
 <span id="cb20-2"><a href="#cb20-2" tabindex="-1"></a>elapsed_time <span class="ot">&lt;-</span> <span class="fu">round</span>((end_time <span class="sc">-</span> start_time), <span class="dv">3</span>)</span>
 <span id="cb20-3"><a href="#cb20-3" tabindex="-1"></a>elapsed_time</span></code></pre></div>
-<pre><code>## Time difference of 41.814 secs</code></pre>
+<pre><code>## Time difference of 40.233 secs</code></pre>
 </div>
 <div id="session-information" class="section level2">
 <h2>Session Information</h2>
