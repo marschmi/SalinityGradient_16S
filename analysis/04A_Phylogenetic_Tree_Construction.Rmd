@@ -118,10 +118,10 @@ set.seed(238438)
 ## Load Packages 
 ```{r load-packages}
 # Install phytools
-remotes::install_github("liamrevell/phytools")
+#remotes::install_github("liamrevell/phytools")
 
 # Install ggtree
-devtools::install_github("GuangchuangYu/ggtree")
+#devtools::install_github("GuangchuangYu/ggtree")
 
 # Now load them into the session 
 pacman::p_load(phytools, ggtree, tidyverse, install = FALSE)
