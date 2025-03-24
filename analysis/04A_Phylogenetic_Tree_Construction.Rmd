@@ -1,5 +1,5 @@
 ---
-title: " with Phyloseq"
+title: "Phylogenetic Tree Construction with FastTree2"
 author: "Mar Schmidt"
 date: "`r Sys.Date()`"
 output:
