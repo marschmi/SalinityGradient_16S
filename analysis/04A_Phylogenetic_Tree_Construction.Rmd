@@ -1,5 +1,5 @@
 ---
-title: " ASVs with Phyloseq"
+title: " with Phyloseq"
 author: "Mar Schmidt"
 date: "`r Sys.Date()`"
 output:
@@ -21,12 +21,13 @@ editor_options:
 
 # Goals 
 
-The goal is to make a phylogenetic tree 
+The goal of this script is to make a phylogenetic tree so we can use it for phylogenetic community analyses like phylogenetic Hill Numbers and the UniFrac beta-diversity measures. 
 
-1. load in preprocessed phyloseq object. 
-2. Create ASV fasta file from the phyloseq object
-3. Align the 16S Sequences from our fasta file 
-4. Create a maximum likelihood tree. 
+1. Load in pre-processed phyloseq object. 
+2. Create ASV fasta file from the phyloseq object.
+3. Align the 16S Sequences from our fasta file using the software [MAFFT](https://academic.oup.com/mbe/article/30/4/772/1073398).  
+4. Create a maximum likelihood tree using the software [FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490). 
+5. Write out the tree file for use in the next step of the analyses. 
 
 ## Inputs 
 1. Our previously pre-processed phyloseq object that has chloroplasts, mitochondria, reverse complements, and negative controls removed, which is located in `data/03_PreProcessing/raw_preprocessed_physeq`
@@ -34,6 +35,69 @@ The goal is to make a phylogenetic tree
 ## Outputs 
 1. The **aligned 16S rRNA gene sequences**, which is the input to the phylogenetic tree. We will save our alignment to `data/04_PhylogeneticTree/MAAFT_aligned_ASV.fasta`
 2. The **calculated phylogenetic tree file**, which is the input to the phylogenetic tree. We will save our alignment to`data/04_PhylogeneticTree/ASVs_unrooted.tree`
+
+# Why Phylogenetic Trees? 
+
+In microbial community analyses, **phylogenetic trees** provide critical evolutionary context for interpreting the relationships among organisms. Unlike simple taxonomic classification, phylogenetic trees capture the shared ancestry and divergence between microbial sequences, which is especially useful when taxonomy is uncertain or incomplete. Many downstream ecological metrics—such as UniFrac dissimilarity and the Phylogenetic Hill Numbers—rely on an accurate tree to quantify differences in community composition or diversity while accounting for how closely related the organisms are. As such, building a phylogenetic tree from sequence data (*e.g.,* 16S rRNA gene sequences) is a foundational step in many microbiome workflows.
+
+We could take an entire semester-long course on phylogenetics! This is because there is **a LOT** of evolutionary theory packed into phylogenetics. Some core themes include: 
+
+1. **Evolutionary Concepts**
+  - Common ancestry, homology vs. analogy
+  - Gene trees vs. species trees
+  - Molecular evolution basics
+2. **Sequence Alignment**
+  - Multiple sequence alignment (MSA)
+  - Impact of alignment quality
+  - Tools: MAFFT, MUSCLE, Clustal Omega
+3. **Models of Molecular Evolution**
+  - Nucleotide, amino acid, codon models
+  - Model selection (e.g., GTR, HKY)
+  - Rate heterogeneity (gamma, invariant sites)
+4. **Tree-Building Methods**
+  - Distance-based (NJ, UPGMA)
+  - Maximum Parsimony
+  - Maximum Likelihood (ML)
+  - Bayesian Inference
+5. **Tree Support & Comparison**
+  - Bootstrapping
+  - Posterior probabilities
+  - Comparing tree topologies
+6. **Phylogenetic Software**
+  - FastTree, RAxML, IQ-TREE, MrBayes, BEAST, MEGA
+  - Command-line vs. GUI tools
+  - Workflow integration
+7. **Phylogenomics**
+  - Concatenated vs. coalescent approaches
+  - Orthologs, paralogs, HGT
+  - Species tree estimation
+8. **Applications**
+  - Ancestral state reconstruction
+  - Biogeography
+  - Microbial ecology (e.g., UniFrac)
+  - Epidemiological phylogenetics
+9. **Challenges in Phylogenetics**
+  - Incomplete lineage sorting
+  - Long-branch attraction
+  - Recombination and alignment uncertainty
+
+## Software for calculating Trees 
+
+Several tools exist for constructing phylogenetic trees, each with trade-offs in speed, scalability, and accuracy. A few (but not all!) are listed below:
+
+| Software         | Method Type               | Strengths                                           | Common Use Cases                              |
+|------------------|----------------------------|-----------------------------------------------------|------------------------------------------------|
+| [FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490)      | Approximate Maximum Likelihood | Extremely fast, handles large datasets              | Amplicon datasets (e.g., 16S), UniFrac         |
+| [RAxML / RAxML-NG](https://academic.oup.com/bioinformatics/article/30/9/1312/238053) | Full Maximum Likelihood     | Very accurate, supports bootstrapping               | High-confidence trees, genome-wide analyses    |
+| [IQ-TREE2](https://academic.oup.com/mbe/article/37/5/1530/5721363)       | Full Maximum Likelihood     | Fast and accurate, model testing, ultrafast bootstrap | Phylogenomics, population genetics             |
+| [PhyML](https://academic.oup.com/sysbio/article/59/3/307/1702850)         | Full Maximum Likelihood     | Flexible, good for moderate-sized datasets          | General molecular phylogenetics                |
+| [MEGA (GUI)](https://academic.oup.com/mbe/article/30/5/1229/992850)    | Distance-based, ML options  | User-friendly interface                             | Educational or small-scale analyses            |
+| [MrBayes](https://academic.oup.com/sysbio/article/61/3/539/1674894)       | Bayesian Inference          | Posterior probability of trees                      | Evolutionary biology, small datasets           |
+
+For amplicon-based microbial community studies, FastTree2 is widely used because it strikes a balance between speed and phylogenetic accuracy, making it ideal for datasets with thousands of sequences. For whole-genome alignments or studies requiring branch support values, more computationally intensive tools like RAxML or IQ-TREE are preferred.
+
+Here we will use FastTree2! 
+
 
 # Setup 
 
@@ -63,7 +127,7 @@ devtools::install_github("GuangchuangYu/ggtree")
 pacman::p_load(phytools, ggtree, tidyverse, install = FALSE)
 ```
 
-## Load Data 
+## 1. Load Data 
 
 ```{r load-physeq}
 # Load physeq 
@@ -71,7 +135,7 @@ load("data/03_PreProcessing/raw_preprocessed_physeq.RData")
 raw_preprocessed_physeq
 ```
 
-# Write ASV Fasta 
+# 2. Write ASV Fasta 
 
 ```{r asv-fasta}
 # Pull out ASV sequences and ASV names
@@ -98,15 +162,40 @@ write(asv_seq_fasta,
 ```
 
 
-# Run Alignment with MAAFT 
+# 3. Run Alignment with MAAFT 
+
+## What is multiple sequence alignment? 
+
+**Multiple sequence alignment (MSA)** is the process of aligning three or more biological sequences (DNA, RNA, or protein) to identify regions of similarity. These conserved regions often indicate evolutionary relationships, structural or functional roles, and are critical for downstream analyses like phylogenetic tree building, motif discovery, or variant calling.
+
+## Why MAFFT? 
+
+MAFFT is fast and accurate multiple sequence alignment. MAFFT stands for **M**ultiple **A**lignment using **F**ast **F**ourier **T**ransform) is one of the most popular MSA tools due to its:
+
+1. Speed – handles thousands of sequences quickly
+2. Accuracy – multiple algorithms depending on dataset size
+3. Scalability – works well for amplicon data (e.g., 16S rRNA) and large genomic datasets
+4. Options – includes modes like `--auto`, `--globalpair`, `--linsi` for high accuracy
+
+You can also use other software for multiple sequence alignment, including: 
+
+| Tool             | Strengths                             | Use Cases                                  |
+|------------------|----------------------------------------|--------------------------------------------|
+| [MAFFT](https://academic.oup.com/mbe/article/30/4/772/1073398)        | Fast, accurate, handles large datasets | Phylogenetics, microbial ecology, genomics |
+| [MUSCLE](https://academic.oup.com/nar/article/32/5/1792/2380623)       | Accurate, slightly slower than MAFFT   | Protein and nucleotide alignments          |
+| [Clustal-Omega](https://www.embopress.org/doi/full/10.1038/msb.2011.75)| Scalable, user-friendly                | General MSA, educational use               |
+| **T-Coffee**     | Highly accurate, customizable          | Small datasets where precision matters     |
+| **PRANK**        | Evolution-aware, good for indels       | Evolutionary analysis, modeling indels     |
+
+As it's one of the most popular MSA tools, we will use MAFFT here for our alignment.
+
+**Some quick notes before we MAFFT:**
 
 Note that `engine.opts = '-l'` in our R chunk header name gives us our original terminal base environment. 
-
 
 To test shell code via RMarkdown: 
 - **Mac:** `command` + `option` + `enter` will send line-by-line code 
 - **Windows:** `control` + `alt` + `enter`
-
 
 ```{r run-mafft, engine = 'bash', engine.opts = '-l'}
 # Write bash code to run MAFFT
@@ -123,7 +212,52 @@ RANDOM=238428
 /programs/mafft/bin/mafft --auto data/04_PhylogeneticTree/preprocessed_ASVs.fasta > data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta
 ```
 
-# FastTree2
+# 4. Calculate the phylogenetic tree with FastTree2
+
+[FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490) is a widely used phylogenetic tree-building program that's particularly well-suited for microbial community analyses, especially when you're dealing with large datasets like 16S rRNA gene sequences from amplicon surveys. 
+
+
+| Feature                  | FastTree             | RAxML / IQ-TREE         | PhyML                    | Neighbor Joining (e.g., MEGA) |
+|--------------------------|----------------------|--------------------------|--------------------------|-------------------------------|
+| Method                   | Approximate ML       | Full ML                  | Full ML                  | Distance-based                |
+| Speed                    | Very fast            | Moderate to slow         | Moderate                 | Very fast                     |
+| Accuracy                 | Good (approximate)   | Higher (more exhaustive) | Higher                   | Lower                         |
+| Handles Big Datasets     | Yes (10k–100k+)      | Limited by memory/CPU    | Not as scalable          | Yes, but with poor resolution |
+| Bootstrapping            | Limited support      | Full support             | Full support             | Yes                           |
+
+
+Here's a breakdown of what makes FastTree unique, how it compares to other phylogenetic tools, and why it's a strong choice for microbial ecology work. 
+
+
+## What is FastTree2? 
+
+[FastTree2](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0009490) is a maximum-likelihood (ML) phylogenetic tree construction program designed for large alignments—think tens to hundreds of thousands of sequences. It uses heuristics to speed up calculations while maintaining a reasonably accurate tree topology.
+
+It's **fast** because: 
+
+- It uses approximate likelihoods rather than full ML computations.
+- Applies heuristic neighbor-joining methods to reduce the number of topology changes it needs to test. 
+- Optimizes only the top few candidate tree rearrangements rather than exhaustively testing all options.
+
+This means it can handle alignments with thousands to tens of thousands of sequences in a few hours, where more rigorous methods might take days or weeks.
+
+## Why is FastTree2 good for this application of microbial community analyses? 
+
+1. **Scalability**: Amplicon datasets (*e.g.,* 16S, ITS) often have thousands of ASVs or OTUs—FastTree can process these without needing a supercomputer.
+2. **Compatibility**: It's integrated into pipelines like QIIME 2, Phyloseq, and mothur, making it a seamless option for microbial ecologists.
+3. **Speed vs. Accuracy Trade-off**: In microbial community analysis, you often care more about broad phylogenetic patterns (*e.g.,* for UniFrac) than about having the most perfect tree.
+4. **Output Readiness**: FastTree produces newick files that can be directly used in downstream ecological analyses (*e.g.,* PCoA on UniFrac distances).
+
+## When to NOT use FastTree? 
+
+Do not use FastTree2 if:
+
+- Publishing a high-resolution evolutionary analysis of closely related microbial strains or genomes.
+- Doing bootstrapping for high-confidence clades. 
+- Working with genome-scale alignments (e.g., core gene alignments from MAGs). 
+
+In these cases, you can use tools like [IQ-TREE2](https://academic.oup.com/mbe/article/37/5/1530/5721363) or [RAxML](https://academic.oup.com/bioinformatics/article/30/9/1312/238053), which are more appropriate, as they provide more accurate trees and branch support values.
+
 
 ```{r run-fasttree2, engine = 'bash', engine.opts = '-l'}
 # Where am I? 
@@ -143,7 +277,6 @@ export PATH=/programs/FastTree-2.1.11:$PATH
     # specify the output tree file 
 FastTree -nt -gtr -fastest -log data/04_PhylogeneticTree/FastTree.log data/04_PhylogeneticTree/MAFFT_aligned_ASVs.fasta > data/04_PhylogeneticTree/ASVs_unrooted.tree
 ```
-
 
 # Final info for Reproducibility 
 
