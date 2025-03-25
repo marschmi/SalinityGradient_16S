@@ -243,9 +243,9 @@ noChloros_physeq <-
 
 # How many ASVs were chloroplasts? 
 numChloros_ASVs <- ntaxa(raw_physeq) - ntaxa(noChloros_physeq)
-
-#There were `r numChloros_ASVs` ASVs that were chloroplasts.
 ```
+
+There were `r numChloros_ASVs` ASVs that were chloroplasts.
 
 ## 4. Remove Mitochondria 
 
@@ -256,10 +256,11 @@ noChlorosMitos_physeq <-
 
 # How many ASVs were mitochondria? 
 numMitos_ASVs <- ntaxa(noChloros_physeq) - ntaxa(noChlorosMitos_physeq)
-
-#There were `r numMitos_ASVs` ASVs that were mitochondria in the data set.
 ```
 
+There were `r numMitos_ASVs` ASVs that were mitochondria in the data set.
+
+<span style="color: red;">INTERPRETATION #1: How many chloroplast and/or mitochondrial ASVs in your dataset? Does this seem reasonable?</span> 
 
 # Evaluate and remove the control samples 
 
@@ -269,10 +270,7 @@ Now, let's take a look at the negative controls and then make a decision about w
 2. ASVs found within the negative controls and their distribution in the samples. 
 3. Evaluate the mock community 
 
-
 ## 5. Negative Controls 
-
-
 
 Including negative controls in your 16S sequencing workflow is a critical step that helps you identify potential contamination and confidently interpret your results—**especially if you’re working with low-biomass** samples like water, air, or host-associated (*e.g.,* skin, etc) surfaces. 
 
@@ -451,6 +449,9 @@ noChlorosMitosNegControls_physeq
 ```
 
 
+<span style="color: red;">INTERPRETATION #2: Did your dataset have any negative controls? If so, how many ASVs did you remove? Does that seem reasonable to you?</span>
+
+
 ## 6. Positive Controls 
 
 ### What is a positive control? 
@@ -536,6 +537,7 @@ noChlorosMitosNegControls_physeq %>%
 
 That all 8 ASVs in the mock exactly match the 8 in the reference file. 
 
+<span style="color: red;">INTERPRETATION #3: Did your dataset have a mock community? If so, what can you say about the accuracy of your sequencing run?</span>
 
 ### Remove the mock community and it's ASVs
 
@@ -628,7 +630,7 @@ for(i in 1:length(asv_seqs)){ # For each asv sequence...
 cat("For", sum(asv_rev_comp) / 2,"ASVs, the reverse complement will need to be removed") 
 ```
 
-<span style="color: red;">INTERPRETATION #1: Do you have any reverse complements in your dataset? </span> 
+<span style="color: red;">INTERPRETATION #4: Do you have any reverse complements in your dataset? </span> 
 
 # 8. Sequencing Depth 
 
@@ -726,7 +728,7 @@ numSeq_bar_plot + numSeq_hist_plot + numSeq_density_plot +
   plot_annotation(tag_levels = "A") 
 ```
 
-<span style="color: red;">INTERPRETATION #2: What can you conclude about your sequencing depths? What are your sample distributions? Do you have "enough" reads? Are there any samples that should be removed at this step?</span>
+<span style="color: red;">INTERPRETATION #5: What can you conclude about your sequencing depths? What are your sample distributions? Do you have "enough" reads? Are there any samples that should be removed at this step?</span>
 
 ## Remove samples with few reads 
 

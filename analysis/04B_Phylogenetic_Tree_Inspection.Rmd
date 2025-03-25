@@ -162,7 +162,7 @@ Now, let's think about the quality of our tree. Evaluate that kingdom tree above
 
 **Do you have any long branches in your tree?** If so, you will need to prune your ASVs. This becomes especially important if your dataset does not have Archaea (*e.g.,* looking at you 341F V3 primers!) especially if you do not have Archaea and will need to 
 
-<span style="color: red;">INTERPRETATION #1: Are there any suspect branches in your tree? Or does your tree look "clean"? Why or why not?</span>
+<span style="color: red;">INTERPRETATION #1: Are there any suspect branches in the raw, unrooted tree? Or does your tree look “clean”? Why or why not?</span>
 
 Before we move onto rooting, this is where we need to assess if we have any long and wonky branches! 
 
@@ -401,7 +401,7 @@ ggtree(unrooted_physeq_rm3315) +
 *Note:* this is just an example of how to remove two ASVs because we actually don't need to prune this tree! :) This is likely because we don't have reverse complements and also because we were very stringent with our ASV lengths! 
 
 
-<span style="color: red;">INTERPRETATION #2: Did you decide to remove any ASVs from your tree? If so, why or why not? What data convinced you to remove each of the ASVs?</span>
+<span style="color: red;">INTERPRETATION #2: Were there any long branches in the unrooted tree? If so, did you decide to remove any ASVs from your tree? Why or why not? What data convinced you to remove each of the ASVs?</span>
 
 # 5. Root the Tree
 
@@ -523,7 +523,9 @@ archaeal_rooted_physeq <-
 # Plot rooted simple tree with no text 
 archaeal_rooted_tree_plot <- 
   ggtree(archaeal_rooted_physeq) + 
-  geom_tippoint(aes(color = Kingdom)) + 
+  geom_tippoint(aes(color = Kingdom)) +   
+  # add a title
+  labs(title = "Archaeal Rooted Tree") + 
   scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # View it! 
@@ -540,7 +542,7 @@ archaeal_rooted_node_tree_plot
 
 In the tree above, we can still see the longer branches in the dataset but we can feel good because we inspected them! :) 
 
-<span style="color: red;">INTERPRETATION #3 (If archaeal rooting): Do you feel like your tree is finalized? Are there any other branches to inspect?</span>
+<span style="color: red;">INTERPRETATION #3 (If archaeal rooting): Now that you've rooted your tree, does the tree seem "finalized"? Are there any other branches/ASVs to inspect? Why or why not?</span>
 
 
 ## 5b. Midpoint Root 
@@ -587,6 +589,7 @@ midpoint_rooted_tree_plot <-
   ggtree(midpoint_rooted_physeq) + 
   geom_tippoint(mapping = aes(color = Kingdom)) + 
   geom_tippoint(aes(color = Kingdom)) + 
+  labs(title = "Midpoint Rooted Tree") + 
   scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # Look at the tree 
@@ -603,7 +606,7 @@ midpoint_rooted_tree_node_plot
 
 You'll see that even with a midpoint root, it's still rooted within the Archaea. This is because the Archaea were the longest branches in the unrooted tree. However, you'll notice that the branch lengths are quite different from the Archaeal rooted tree. This is because the Archeal rooted tree assumes ancestry, which is not an assumption in midrooting. 
 
-<span style="color: red;">INTERPRETATION #3 (If midpoint rooting): Do you feel like your tree is finalized? Are there any other branches to inspect?</span>
+<span style="color: red;">INTERPRETATION #3 (If midpoint rooting): Now that you've rooted your tree, does the tree seem "finalized"? Are there any other branches/ASVs to inspect? Why or why not?</span>
 
 ## 7. Save phyloseq objects
 
