@@ -38,7 +38,7 @@ editor_options:
 1. The output of this file will be a S4 phloseq objected called `phytree_preprocessed_physeq`, which we will save to `data/04_PhylogeneticTree/`. 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE,
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
                       fig.align = "center",
                       # Always relevant to the document directory 
                       # send any figure output to this folder 
@@ -110,7 +110,7 @@ Now, let's take a look
 
 ## Kingdom Level Tree
 
-```{r plot-tree-unrooted}
+```{r plot-tree-unrooted, fig.width=4.5, fig.height=7}
 # Make a basic tree with the domains 
 kingdom_tree <- 
   ggtree(unrooted_physeq) + 
@@ -175,7 +175,7 @@ This part will get a little manual, however, this is an important step along the
 
 Let's put labels on our tree so we have a bit more flexibility
 
-```{r kingdom-node-labels}
+```{r kingdom-node-tree, fig.width=4.5, fig.height=7}
 kingdom_node_tree <- 
   kingdom_tree + 
   # Add the node label 
@@ -219,7 +219,7 @@ head(tree_tib)
 str(tree_tib)
 
 # lets look at the long branch
-mrca_node_703 <- MRCA(unrooted_tree, .node1 = 703, .node2 = 702) #3315
+mrca_node_703 <- tidytree::MRCA(unrooted_tree, .node1 = 703, .node2 = 702) #3315
 
 # Inspect
 mrca_node_703
@@ -316,11 +316,11 @@ tidytree::ancestor(unrooted_tree, 1910) # The input is the TREE, not phyloseq!!
 viewClade(kingdom_node_tree, 4519) # even more zoomed out
 ```
 
-In the subtree above, it's clear that 1910 is longer than the nearby branches. Let's inspect some more! 
+In the sub-tree above, it's clear that 1910 is longer than the nearby branches. Let's inspect some more! 
 
 ```{r pull-node1910}
 # lets look at the long branch
-mrca_node_1910 <- MRCA(unrooted_tree, .node1 = 1910, .node2 = 1909) #3315
+mrca_node_1910 <- tidytree::MRCA(unrooted_tree, .node1 = 1910, .node2 = 1909) #3315
 
 # Inspect
 mrca_node_1910 #4529
@@ -357,8 +357,8 @@ node_4529_df
 
 Interesting! We can already conclude a few things: 
 
-- There are VERY FEW counts! Only a total of 5 counts across two samples. A very rare microbe!
-- But this time, we have the taxonomy assigned to the Order level: a Burkholderiales and a Chlamydiales. 
+- There are VERY FEW counts of these two ASVs! Only a total of 5 counts across two samples, likely found only in the one sample. This helps further show how zero-inflated these microbial datasets are. 
+- In terms of taxonomy, these ASVs are assigned to the Order level: a Burkholderiales and a Chlamydiales. 
 
 If we want, we can also confirm by BLASTing: 
 
@@ -398,11 +398,16 @@ ggtree(unrooted_physeq_rm3315) +
   geom_tippoint(mapping = aes(color = Kingdom))
 ```
 
-Note: this is just an example of how to remove two ASVs because we actually don't need to prune this tree! :) This is likely because we don't have reverse complements and also because we were very stringent with our ASV lengths! 
+*Note:* this is just an example of how to remove two ASVs because we actually don't need to prune this tree! :) This is likely because we don't have reverse complements and also because we were very stringent with our ASV lengths! 
+
+
+<span style="color: red;">INTERPRETATION #2: Did you decide to remove any ASVs from your tree? If so, why or why not? What data convinced you to remove each of the ASVs?</span>
 
 # 5. Root the Tree
 
-**Rooting a tree** means designating a specific node in a phylogenetic tree as the common ancestor of all other nodes. This establishes a direction of evolution — from the root (the oldest ancestor) to the tips (the current taxa or sequences). A tree without a root is called **unrooted**, and it only shows relationships (like how closely related things are), not the direction of descent.
+Now that we've pruned the trees of potentially contaminating ASVs, it's time to root! 
+
+*What does it mean to root a tree, you ask?* **Rooting a tree** means designating a specific node in a phylogenetic tree as the common ancestor of all other nodes. This establishes a direction of evolution — from the root (the oldest ancestor) to the tips (the current taxa or sequences). A tree without a root is called **unrooted**, and it only shows relationships (like how closely related things are), not the direction of descent.
 
 ## Why do we root trees in microbial community analyses?
 
@@ -428,7 +433,6 @@ So, **how do we root a tree**? There are two different types of methods to root 
         - Requires a reliable outgroup — too distant, and it can distort the tree (long-branch attraction).
         - Not always available or appropriate (e.g., if you're only analyzing a subset of taxa without known outgroups).
 
-
 2. **Midpoint rooting:** Places the root at the midpoint of the longest path in the tree (useful when no clear outgroup exists). 
     - *Pros:*
         - Simple and automatic — no need for prior biological knowledge.
@@ -445,253 +449,195 @@ So, **how do we root a tree**? There are two different types of methods to root 
 | **Outgroup**         | You have a well-placed, closely related outgroup | Biologically accurate       | Needs prior knowledge; may bias tree |
 | **Midpoint**         | No good outgroup; exploratory or metric-focused | Fast and automatic          | Assumes equal evolutionary rates     |
 
-
-If you're working in QIIME or another microbiome pipeline and don't have a clear outgroup, midpoint rooting is typically fine — especially for things like UniFrac or beta diversity. If you’re doing evolutionary or taxonomic analysis and have a suitable outgroup, use that instead.
-
+**In summary:** If you're working in QIIME or another microbiome pipeline and don't have a clear outgroup, **midpoint rooting** is typically fine — especially for things like UniFrac or beta diversity. If you’re doing evolutionary or taxonomic analysis and **have a suitable outgroup, use that instead**.
 
 
+## 5a. Archaeal Root
 
-## 4a. Archaeal Root
+As discussed above, if you have archaea in your sample, it's best to use the outgroup method to root the tree. Since we have archaea in this dataset, we will use the outgroup method. However, below we will walk through an example of how to mid-root the tree. (*Note that midpoint rooting is not preferable when there's a clear outgroup!*)
 
+```{r archaeal-root}
+# Is the tree rooted? 
+tidytree::is.rooted(phy_tree(unrooted_physeq))
 
-```{r calc-kingdomNode-tree}
-# Make a basic tree with the domains 
-kingdom_node_tree <- 
-  kingdom_tree + 
-  # Add the node lables
-  geom_text(aes(label=node), hjust= -0.5, vjust = -0.3, size = 2)
-
-# Visualize 
-kingdom_node_tree
-```
-
-
-```{r root-archaea}
 # but first find the ASVs that are Archaea
-archaea_node <- 
-  tax_table(raw_preprocessed_physeq) %>%
+archaeal_ASVs <- 
+  tax_table(unrooted_physeq) %>%
   as.data.frame() %>%
   filter(Kingdom == "Archaea") %>%
   pull(ASV)
 
+# How many archaeal ASVs? 
+length(archaeal_ASVs)
+archaeal_ASVs
+
 # find the node that encompasses all Archaea
-archaea_node <- findMRCA(unrooted_tree, tips = archaea_node, type = "node") # node = 3394
+archaeal_node <- 
+  phytools::findMRCA(unrooted_tree, 
+                     tips = archaeal_ASVs, type = "node") 
+
+# Inspect
+archaeal_node # node = 3394
 
 # View clade to check it out
-viewClade(kingdom_tree, archaea_node)
-viewClade(kingdom_node_tree, archaea_node)
+viewClade(kingdom_tree, archaeal_node)
+viewClade(kingdom_node_tree, archaeal_node)
+```
 
+```{r archeal-node-highligh, fig.width=4.5, fig.height=7}
 # Let's highlight! 
 node_3394 <- 
   ggtree(unrooted_physeq) + 
   geom_tippoint(mapping = aes(color = Kingdom), size = 1.5) + 
   #geom_text(aes(label = node), hjust = -0.7, vjust = -0.2, size = 2) +
-  geom_highlight(node = archaea_node, fill = "goldenrod1") + 
+  geom_highlight(node = archaeal_node, fill = "goldenrod1") + 
   scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # Visualize it 
 node_3394
 
 # Root it! 
-archaea_root_tree <-
-  ape::root(phy_tree(unrooted_physeq), node = archaea_node, resolve.root = TRUE)
+archaeal_rooted_tree <-
+  ape::root(phy_tree(unrooted_physeq), 
+            node = archaeal_node, resolve.root = TRUE)
 
 # Check it! 
-is.rooted(archaea_root_tree)
+tidytree::is.rooted(archaeal_rooted_tree)
+```
+
+Great, we have successfully rooted the tree! Now, let's plot it to also confirm this visually. 
+
+### 6a. Merge phyloseq: Archeal Rooted Tree
+
+```{r merge-archeal-root-physeq}
+# Merge with physeq 
+archaeal_rooted_physeq <- 
+  merge_phyloseq(raw_preprocessed_physeq, archaeal_rooted_tree)
 ```
 
 
-## Plot Rooted Archaeal Tree 
+### Plot Archaeal Rooted Tree 
 
-```{r plot-archaeal-rooted-tree}
-# Merge with physeq 
-archaea_root_physeq <- 
-  merge_phyloseq(raw_preprocessed_physeq, archaea_root_tree)
-
+```{r plot-archaeal-rooted-tree, fig.width=4.5, fig.height=7}
 # Finally let's plot it! 
 # Plot rooted simple tree with no text 
-archaea_rooted_simple <- 
-  ggtree(archaea_root_physeq) + 
+archaeal_rooted_tree_plot <- 
+  ggtree(archaeal_rooted_physeq) + 
   geom_tippoint(aes(color = Kingdom)) + 
   scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
 # View it! 
-archaea_rooted_simple
+archaeal_rooted_tree_plot
 
 # Plot rooted tree with text
-archaea_rooted_text <- 
-  ggtree(archaea_root_physeq) +
-  geom_tippoint(aes(color = Kingdom)) + 
-  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5) + 
-  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
+archaeal_rooted_node_tree_plot <- 
+  archaeal_rooted_tree_plot +
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5) 
 
 # View it! 
-archaea_rooted_text
+archaeal_rooted_node_tree_plot
 ```
 
+In the tree above, we can still see the longer branches in the dataset but we can feel good because we inspected them! :) 
+
+<span style="color: red;">INTERPRETATION #3 (If archaeal rooting): Do you feel like your tree is finalized? Are there any other branches to inspect?</span>
 
 
-## Plot Archaea rooted final tree
-```{r plot-archaea-final}
-# Plot rooted simple tree with no text
-archaea_rooted_simple <- ggtree(archaea_root_physeq) +
-  geom_tippoint(aes(color = Kingdom))  
+## 5b. Midpoint Root 
 
-archaea_rooted_simple
+*If you have Archaea or a clear outgroup, always use the outgroup rooting. If not, you can midpoint root.*
 
-# Plot rooted tree with text
-archaea_rooted_text <- ggtree(archaea_root_physeq) +
-  geom_tippoint(aes(color = Kingdom)) + 
-  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+As mentioned above, if your project's data does not have Archaea or a specified outgroup, it is possible to midpoint root the tree. Midpoint rooting calculates tip to tip distances and then places the root halfway between the two longest tips. This is why it is important to **first prune your tree of contaminating lineages!** If contaminating lineages are included in the midrooting of the tree, then it will throw off the branch lengths. 
 
-archaea_rooted_text
-```
+**Before midrooting the tree:**
 
-
-Now we can go on and save to a new phyloseq object. Continue to line 280.
-
-
-# Midrooting your tree 
-If your project's data does not have Archaea or a specified outgroup you can midroot your tree. Midpoint rooting calculates tip to tip distances and then places the root halfway between the two longest tips.
-
-**Do not complete this step if you have Archaea in your data set**
-
-**If you need to midroot your tree:**
-1. investigate and pull the ASVs in your long branches and BLAST to confirm if these are real bacterial ASVs.
-
-2. Remove any unwanted ASVs using the prune function. Long nodes (branches) are outliers. If we keep them in then we can introduce bias into the tree reconstruction creating the "long branch attraction" error where distantly related taxa appear closely related due to high rate of evolution on long branches. We will be evaluating the long branch (node = 2618) just as we did above with the Archaea rooted tree
+1. Investigate and pull the ASVs in your long branches and BLAST to confirm if these are real bacterial ASVs, as mentioned above in the "long branches" section.
+2. Remove any unwanted ASVs using the prune function. **Long nodes (branches) are outliers**! If we keep them in the tree, bias will be introduced into the tree reconstruction creating the **long branch attraction** error where distantly related taxa appear closely related due to a high rate of evolution on long branches. 
 
 If you **do not** have Archaea and **have** removed your long branches, then you may follow the code below to midroot your tree.
-### Remove any long branches from our unrooted tree
-```{r evaluate-unrooted-tree}
-# View a specific clade
 
-# Zoom in on node that looks potentially suspicious
-viewClade(kingdom_node_tree + 
-          labs(title = "Unrooted Tree: Node 703"), 
-          node = 703)
+### 6b. Merge phyloseq: Midpoint Rooted Tree
 
-# Lets see its ancestors
-ancestor(unrooted_tree, 703)
-
-# Or if there are two nodes that we can see we can find its MRCA
-## create tibble of tree to identify offspring
-tree_tib_unroot <- as_tibble(unrooted_physeq@phy_tree)
-
-# lets look at the really long branch with a bunch of NAs
-MRCA(unrooted_tree, .node1 = 703, .node2 = 702) #3315
-
-viewClade(kingdom_node_tree, 3315) 
-
-# Actually we see the node 3316 is better that has the long node 703
-viewClade(kingdom_node_tree, 3315) 
-
-## create dataframe to view ASVs and taxa info and to pull the ASVs
-node3315_unrooted <- offspring(tree_tib_unroot, 3315, tiponly = TRUE) %>% 
-  as.data.frame() %>% pull(label)
-
-node3315_unrooted_df <- as.data.frame(archaea_root_physeq@tax_table) %>% filter(ASV %in% node3315_unrooted) %>% filter(Kingdom == "Bacteria" | is.na(Kingdom))
-
-# look at counts of each phylum
-node3315_unrooted_df %>% 
-  count(Kingdom)
-
-# look at counts of the ASVs
-unrooted_physeq %>%
-  subset_taxa(., ASV == "ASV_2618") %>%
-  otu_table() %>%
-  data.frame() %>%
-  colSums()
-
-# Lets BLAST our sequences to investigate if they are real or not
-node3315_unrooted_df 
-```
-ASV_2618 = suspect. Let's explore this ASV more!
-
-When we BLASTed we see that both hits are legit bacteria 16S hits. Therefore, the rest of our tree looks good and we do not need to remove anything.
-
-### Midroot our tree
-```{r mid-root-tree}
-# Is the tree rooted?
-new_unrooted_tree <- phy_tree(unrooted_tree)
-
+```{r midpoint-root-tree-physeq}
 # Check to see if tree is rooted.. expect it to be false
-is.rooted(new_unrooted_tree)
+is.rooted(phy_tree(unrooted_physeq))
 
 # Let's midpoint root the tree
-midpoint_rooted_tree <- midpoint.root(new_unrooted_tree)
+midpoint_rooted_tree <- 
+  unrooted_physeq %>%
+  phy_tree() %>%
+  phytools::midpoint.root()
 
 # Is the new tree rooted? Should be TRUE!
 is.rooted(midpoint_rooted_tree)
 
-#Assign to a new phyloseq object: merging subsetted phyloseq with the new rooted tree
+# Assign to a new phyloseq object!
+# Merge tree with the raw_preprocessed physeq
+midpoint_rooted_physeq <-
+  merge_phyloseq(raw_preprocessed_physeq, midpoint_rooted_tree)
+```
 
-# We will be merging our phyloseq object that has been midrooted. Below is an example of how to create the phyloseq object removing your bad taxa and then saving it to a new phyloseq object. 
+Now, we have a merged phyloseq object! Let's take a look at what it looks like and see how it compares with the archaeal rooted tree above. 
 
-# Merge tree with our raw_preprocessed physeq
-midpoint_rooted_physeq <- merge_phyloseq(raw_preprocessed_physeq, midpoint_rooted_tree)
+### Plot Midpoint Rooted Tree
 
-
-# This is extra code that we will not be using in class but may be useful to you in your own data analysis:)
-# 1. Create the phyloseq object without bad ASV
-physeq_rm2618 <- 
-  raw_preprocessed_physeq %>%
-  subset_taxa(ASV != "ASV_2618")
-
-# Merge tree with the new physeq_rm456
-midroot_physeq_rm2618 <- 
-  merge_phyloseq(physeq_rm2618, midpoint_rooted_tree)
-midroot_physeq_rm2618
-
+```{r plot-midpoint-root-tree,fig.width=4.5, fig.height=7}
 # Quick inspection of tree 
-ggtree(midroot_physeq_rm2618) + 
-  geom_tippoint(mapping = aes(color = Kingdom))
-```
-Now that we have midrooted our tree, lets view our final tree
-
-## Plot Final Midrooted Tree
-```{r plot-midrooted-tree}
-#View our final tree
-
-# Plot midrooted simple tree with no text
-mid_rooted_simple <- ggtree(midpoint_rooted_physeq) +
-  geom_tippoint(aes(color = Kingdom))  
-
-mid_rooted_simple
-
-# Plot rooted tree with text
-mid_rooted_text <- ggtree(midpoint_rooted_physeq) +
+midpoint_rooted_tree_plot <-
+  ggtree(midpoint_rooted_physeq) + 
+  geom_tippoint(mapping = aes(color = Kingdom)) + 
   geom_tippoint(aes(color = Kingdom)) + 
-  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5)
+  scale_color_manual(values = c("firebrick3", "cornflowerblue", "grey"))
 
-mid_rooted_text
+# Look at the tree 
+midpoint_rooted_tree_plot
 
+# Add nodes 
+midpoint_rooted_tree_node_plot <- 
+  midpoint_rooted_tree_plot + 
+  geom_text(aes(label = node), hjust = -0.5, vjust = -0.3, size = 1.5) 
+
+# View it 
+midpoint_rooted_tree_node_plot
 ```
 
+You'll see that even with a midpoint root, it's still rooted within the Archaea. This is because the Archaea were the longest branches in the unrooted tree. However, you'll notice that the branch lengths are quite different from the Archaeal rooted tree. This is because the Archeal rooted tree assumes ancestry, which is not an assumption in midrooting. 
 
-## Save phyloseq object
-Note that because I have not removed any taxa, I will take my archaea_root_physeq and rename it into phytree_preprocessed_physeq object. If you have rooted your tree using the midroot, then please use your midroot_physeq object and save that into phytree_preprocessed_physeq.
+<span style="color: red;">INTERPRETATION #3 (If midpoint rooting): Do you feel like your tree is finalized? Are there any other branches to inspect?</span>
 
-If you have removed your bad taxa and have midrooted your tree please note lines 269-271. These lines will be commented out but serve to provide you an understanding of how we can save our phyloseq objects with our midrooted tree.
+## 7. Save phyloseq objects
+
+The phyloseq objects can be saved in one file as a list of objects. Or, we can save them individually. Two examples are below: 
+
+### Save multiple phyloseq objects as a list
+
+This will keep two phyloseq objects in on .RData object that will allow us to easily load in both trees into an R session at once. 
+
+```{r save-phyloseq-objects-list}
+# Take a quick look at the two!
+archaeal_rooted_physeq # Archaeal rooted tree
+midpoint_rooted_physeq # Midpiont rooted tree
+
+# Save both phyloseq objects to one .RData file 
+save(list = c("archaeal_rooted_physeq", "midpoint_rooted_physeq"),
+     file = "data/04_PhylogeneticTree/phytree_preprocessed_physeqs.RData")
+```
+
+### Save individual phyloseq objects
+
+Here, we will create two individual files that will each have a single phyloseq object. This is useful if we only want to work with one tree. (For example, we will move forward with the archaeal tree.) 
+
 ```{r save-phyloseq-object}
-# lets rename our phyloseq object
-phytree_preprocessed_physeq <- archaea_root_physeq
+# Now, save archaeal rooted phyloseq object
+save(archaeal_rooted_physeq, 
+     file = "data/04_PhylogeneticTree/archaeal_rooted_physeq.RData")
 
-# Save both phyloseq objects with our tree object to one .RData file 
-# save(list = c("unrooted_physeq_rm2618", "midroot_physeq_rm2618"),
-#      file = "data/04_Phylogenetic_Tree/phytree_preprocessed_physeq.RData")
-
-
-# now lets save our preprocessed phyloseq object
-save(phytree_preprocessed_physeq, file = "data/04_Phylogenetic_Tree/phytree_preprocessed_physeq.RData")
+# Now, save midpoint rooted phyloseq object
+save(midpoint_rooted_physeq, 
+     file = "data/04_PhylogeneticTree/midpoint_rooted_physeq.RData")
 ```
-Now that we have our tree, we can go forth and begin our next analysis!
 
-
-
-
-
-
+Now that we have our rooted trees inside of a phyloseq object, we can go forth and begin our next analysis!
 
 # Final info for Reproducibility 
 
@@ -712,7 +658,3 @@ elapsed_time
 # Ensure reproducibility with package version information
 devtools::session_info()
 ```
-
-
-
-
