@@ -3,8 +3,8 @@
 Questions: 
 
 1. How is microbial biodiversity modified across a salinity gradient?
-	- Null Hypothesis: Microbial biodiversity (e.g. richness) does not vary along a salinity gradient.
-	- Hypothesis: Microbial richness will increase as salt concentration lowers. 
+	- Null Hypothesis: Microbial biodiversity (*e.g.* richness)  does not vary along a salinity gradient.
+	- Hypothesis: Microbial biodiversity (*e.g.* richness)  will increase as salt concentration lowers. 
 		- There is an inverse relationship between richness and salinity.  
 2. How does microbial composition change across a salinity gradient? 
 	- Null Hypothesis: Microbial composition does not change across a salinity gradient. 
