@@ -34,6 +34,12 @@ Run an analysis on the within-sample biodiversity of the samples in our project.
 
 # Set up the Environment 
 
+## Set the seed 
+```{r set-seed}
+set.seed(238428)
+```
+
+
 ## Load Packages & Colors 
 
 ```{r load-packages-colors}
@@ -43,4 +49,217 @@ pacman::p_load(tidyverse, devtools, patchwork, iNEXT, phyloseq,
 # Load in colors for plotting 
 source("code/colors.R")
 ```
+
+## Load in Data 
+
+```{r load-data}
+load("data/04_PhylogeneticTree/phytree_preprocessed_physeqs.RData")
+
+# take a look at it! 
+archaeal_rooted_physeq
+
+# Intuition check on seq depth
+min(sample_sums(archaeal_rooted_physeq))
+
+# Make a metadata dataframe 
+metadata_df <- 
+  archaeal_rooted_physeq %>%
+  sample_data() %>%
+  data.frame()
+
+# view of it
+glimpse(metadata_df)
+```
+
+# Calculate Biodiversity with iNEXT 
+
+```{r iNEXT-biodiversity}
+# prepare the input data 
+# Species in rows and the samples in columns 
+iNEXT_input_df <- 
+  archaeal_rooted_physeq %>%
+  otu_table() %>%
+  data.frame()
+
+# Inpect 
+dim(iNEXT_input_df)
+iNEXT_input_df[1:5, 1:5]
+
+# Run iNEXT 
+# Remember to set the seed!
+# ASVs in ROWs, samples in COLUMNS 
+#iNEXT_data <- iNEXT(iNEXT_input_df, 
+#                    q = c(0, 1, 2),
+#                    datatype = "abundance")
+```
+
+Since iNEXT takes a while to run, we will load in the data that was caluculated before! 
+
+```{r load-iNEXT-data}
+load("data/05_Biodiversity/iNEXT_data.RData")
+
+# Inspect 
+str(iNEXT_data)
+typeof(iNEXT_data)
+```
+
+
+# Plot the Rarefaction Curves 
+
+```{r iNEXT-colors}
+# Prepare Colors 
+color_df <- 
+  iNEXT_input_df %>%
+  colnames() %>%
+  data.frame()
+# Check
+head(color_df)
+# Rename the column 
+colnames(color_df)[1] <- "names"
+# Check
+head(color_df)
+
+
+# Make a helper dataframe for plotting with colors 
+iNEXT_color_df <- 
+  color_df %>%
+  # Fix the names for merging
+  mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+         names = gsub(names, pattern = "X",  replace = "")) %>%
+  # Merge with metadata
+  left_join(metadata_df, by = "names") %>%
+  # Merge with colors for plotting with ggiNEXT
+  left_join(data.frame(station_colors = station_colors,
+            station = names(station_colors)),
+            by = "station")
+
+head(iNEXT_color_df)
+```
+
+
+Remember the output of iNEXT
+
+q = 0, richness
+q = 1, shannon
+q = 2, simpson
+
+```{r plot-iNEXT-rarefaction}
+ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") + 
+  scale_color_manual(values = iNEXT_color_df$station_colors) + 
+  scale_fill_manual(values = iNEXT_color_df$station_colors) + 
+  scale_shape_manual(values = base::rep(17, nsamples(archaeal_rooted_physeq))) + 
+  theme_bw() + 
+  theme(legend.position = "none") + 
+  labs(y = "Effective Number of ASVs", x = "Number of Sequences") 
+```
+
+# Manually Plot Rarefaction 
+
+```{r manual-rarefaction}
+str(iNEXT_data)
+
+iNEXT_manual_df <- 
+  iNEXT_data$iNextEst$size_based %>%
+  dplyr::rename(names = Assemblage) %>%
+  # fix the samples to merge with metadata 
+  mutate(names = gsub(names, pattern = "[.]", replace = "-"),
+         names = gsub(names, pattern = "X", replace = "")) %>%
+  # join with the metadata
+  left_join(., metadata_df, by = "names") %>%
+  mutate(station = factor(station, levels = c("Copano West",
+                                              "Copano East",
+                                              "Mesquite Bay",
+                                              "Aransas Bay",
+                                              "Shipping Channel")))
+
+# Inspection
+dim(iNEXT_manual_df)
+
+# Manually plot rarefaction curves 
+iNEXT_manual_df %>%
+  # Filter out rows that are calculated with actual sequences (no extrapolated)
+  dplyr::filter(Method == "Rarefaction") %>%
+  # Now, let's draw the plot! 
+  ggplot(aes(x = m, y = qD, color = station, group = names)) + 
+  geom_line() + 
+  # Facet by station 
+  facet_grid(Order.q~station, scales = "free") + 
+  scale_color_manual(values = station_colors) + 
+  theme_bw() + 
+  labs(y = "Effective Number of ASVs", x = "Number of Sequences") + 
+  theme(legend.position = "bottom")
+```
+
+# Boxplot: Diversity by Station 
+
+## Categorical Analysis 
+
+```{r make-obs-df}
+obs_div_df <- 
+  iNEXT_manual_df %>%
+  dplyr::filter(Method == "Observed") 
+
+# check it
+glimpse(obs_div_df)
+
+# Plot boxplots by station against diversity
+obs_div_df %>%
+  ggplot(aes(x = station, y = qD, fill = station, 
+             color = station)) + 
+  facet_wrap(.~Order.q, scales = "free_y") + 
+  geom_jitter() + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  labs(y = "Effective Number of ASVs") + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+```
+
+
+# Continuous Relationships - Salinity (PSU) vs Biodiversity
+
+## Environmental Variables 
+
+```{r environ-check}
+# Create dataframe of environmental variables 
+env_df <- 
+  metadata_df %>%
+  dplyr::select(names, water_tempC:DO_mgL)
+
+# Pair-wise interactions between env var
+pairs(dplyr::select(env_df, -names), upper.panel = NULL)
+```
+
+
+## PSU 
+
+- "Practical Salinity Unit"
+- 1 PSU = 1 g salt per 1,000 g water = 1 ppt
+
+ranges between 0 and >30
+
+- Freshwater: 0-0.5
+- Brackish: 0.5 - 30
+- Marine: >30
+
+```{r plot-div-salinity-lm}
+# How does biodiversity change over the salinity gradient?
+obs_div_df %>%
+  ggplot(aes(x = salinity_psu, y = qD)) + 
+  facet_wrap(.~Order.q, scales = "free") + 
+  geom_point(aes(color = station)) + 
+  scale_color_manual(values = station_colors) + 
+  labs(x = "Salinity (PSU)", y = "Effective Number of ASVs") +
+  stat_smooth(method = "lm") + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+```
+
+
+
 
