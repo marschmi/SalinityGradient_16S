@@ -1,15 +1,26 @@
 ---
 title: "Biodiversity across a salinity gradient"
-author: "Marian Schmidt"
-date: "`r Sys.Date()`"
-output: html_document
+author: "Mar Schmidt"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
 editor_options: 
   chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
-                      fig.path = "../figures/05_Biodiversity")
+                      fig.path = "../figures/05_Biodiversity/")
 ```
 
 # Goals 
@@ -18,27 +29,55 @@ Run an analysis on the within-sample biodiversity of the samples in our project.
 
 1. Calculate the Hill Numbers of the samples using the iNEXT package. 
 2. Plot and evaluate the interpolated and extrapolated rarefaction curves from iNEXT. 
-3. Analyze the hill numbers as it relates to stations and salinity (in PSU).
-4. Answer the scientific question at hand! 
+3. Analyze the Hill numbers as it relates to stations and salinity (in PSU).
+4. Test and then answer the scientific question at hand! (Remember, we're doing biology!)
 
 ## Inputs 
 
-1. `phytree_preprocessed_physeq`
+1. We will need the `phytree_preprocessed_physeq`, which includes a rooted tree (ideally within the archaea!) that we created in `analysis/04B_Phylogenetic_Tree_Inspection.Rmd`. 
 
 ## Outputs 
 
-1. Calculated biodiversity measures (Hill numbers) across every sample. 
-2. Figures to visualize these changes in biodiversity
-3. Statistical tests to actually show the changes and patterns in biodiversity.
+*This is an exciting analysis!!! We finally get to answer one of our scientific questions!*
 
+1. Calculated biodiversity measures (Hill numbers) across every sample. 
+2. Figures to include in our scientific paper that visualize the data as it relates to the scientific question.
+3. Statistical tests conveying the measured and quantified changes and patterns in biodiversity.
+
+# Scientific Question
+
+## Question & Hypotheses
+
+How is microbial biodiversity modified across a salinity gradient?
+
+- *Null Hypothesis:* Microbial biodiversity (*e.g.* richness) does not vary along a salinity gradient.
+- *Alternative Hypothesis:* Microbial biodiversity (*e.g.* richness) will increase as salt concentration lowers. There is an inverse relationship between richness and salinity.
+
+## Field site background
+
+To answer this scientific question, I performed a study in the Gulf of Mexico to take advantage of a natural salinity gradient in an estuarine ecosystem, known as the Mission-Aransas Estuary. 
+
+### Mission-Aransas Estuary
+
+*Remember what we were doing before we got all distracted with the details of ASVs, pre-processing, and phylogenetics?* We actually conducted a study to evaluate the role that salinity plays in shaping Estuarine Microbial Communities in the Gulf of Mexico at the long-term SWMP stations at the [Mission-Aransas National Estuarine Research Reserve (NERR)](https://marinescience.utexas.edu/research/mission-aransas-reserve#:~:text=The%20Mission%2DAransas%20National%20Estuarine%20Research%20Reserve%20is%20a%20federal,of%20Texas%20Marine%20Science%20Institute).
+
+**What's a NERR?** The [National Oceanic and Atmospheric Administration (NOAA) maintains 30 estuarine research reserves across the country](https://coast.noaa.gov/nerrs/). There are 5 in the Gulf of Mexico, two (soon to be three!) in the Great Lakes, among others across the United States!  
+
+*Let's get to calculating Biodiversity!*
 
 # Set up the Environment 
+
+## Timing of this script
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
 
 ## Set the seed 
 ```{r set-seed}
 set.seed(238428)
 ```
-
 
 ## Load Packages & Colors 
 
@@ -71,7 +110,93 @@ metadata_df <-
 glimpse(metadata_df)
 ```
 
-# Calculate Biodiversity with iNEXT 
+# Biodiversity Hill Numbers with iNEXT
+
+
+## Hill Number Equation
+
+Next, we will calculate the biodiversity with the [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) package. iNEXT focuses on three measures of biodiversity via the Hill numbers. Hill numbers have the order q: 
+
+$$
+{}^qD = \left( \sum_{i=1}^{S} p_i^q \right)^{1/(1 - q)}, \quad q \geq 0, \quad q \neq 1.
+$$
+
+But when *q = 1*, then the equation is: 
+
+$$
+{}^1D = \lim_{q \to 1} {}^qD = \exp\left( - \sum_{i=1}^{S} p_i \log p_i \right) = \exp(H_{sh}).
+$$
+
+
+**Where:**
+
+- \( {}^qD \) is the *Hill number* or *diversity of order \( q \)*, a measure of species diversity.
+- \( q \) is the *order of diversity*, which determines how sensitive the measure is to species relative abundances:
+  - \( q = 0 \): all species are weighted equally or **species richness**,
+  - \( q = 1 \): corresponds to the exponential of **Shannon entropy**,
+  - \( q = 2 \): corresponds to the **inverse of Simpson’s index**.
+- \( S \) is the *total number of species* in the community.
+- \( p_i \) is the *relative abundance* of species \( i \), i.e., the proportion of individuals in the community belonging to species \( i \).
+
+## A Microbial Community Example  🦠
+
+Imagine you're studying the microbial diversity in three sourdough starters from three different bakers: A, B, and C. Each one contains a mix of **ASVs**. *But how diverse are they, really?* Here,'s a great application of the **Hill numbers** to find out, varying the value of \( q \).
+
+### When \( q = 0 \): Counting *All* ASVs Equally  
+> *Species Richness* → \( {}^0D \)
+
+Here, we ignore how common or rare each ASV is. Every ASV counts equally — even ones that appear just once. For example, this is like walking into a library and simply counting how many unique book titles are on the shelves—not how many copies of each exist, just the number of different titles. So, even if there’s only one copy of most books and 100 copies of one, they all count the same. 
+
+Here, in the context of microbial communities, we are pondering: **“How many different ASVs are present?”** We do not weight them by abundance/evenness in any way. Rather, we focus on a binary measures of 0s and 1s that represent presence (1) and absence (0).
+
+- Baker A’s starter has 10 unique ASVs: \( {}^0D_{\text{A}} = 10 \)    
+- Baker B’s has 7 unique ASVs: \( {}^0D_{\text{B}} = 7 \)  
+- Baker C’s has 15 unique ASVs: \( {}^0D_{\text{C}} = 15 \)  
+
+
+### When \( q = 1 \): Balancing Rarity and Commonness  
+> *Shannon Diversity* → \( {}^1D \)
+
+Now we ask: **"How evenly are the ASVs distributed?"** Rare ASVs matter, but not as much as common ones. If we revisit the library analogy, now imagine you’re randomly picking books off the shelves to read. Some books have many more copies, so you’re more likely to pick those — but you still have a chance to encounter the rare ones. This measure reflects both richness and evenness — it tells you the effective number of “common” book titles based on their relative frequency. `q = 1` gives you a sense of how diverse your reading experience would be, considering popular vs. rare titles.
+
+- Baker A’s 10 ASVs are 90% dominated by just one ASV: \( {}^1D_{\text{A}} \approx 2 \)  
+- Baker B’s 7 ASVs are fairly even: \( {}^1D_{\text{B}} \approx 6.8 \)  
+- Baker C’s 15 ASVs include 3 very dominant ones: \( {}^1D_{\text{C}} \approx 5 \)  
+
+Even though Baker C and A have more ASVs in terms of richness in \( {}^0D \), **Baker B** has the highest \( {}^1D \) due to better balance between the abundances of its seven ASVs. 
+
+### When \( q = 2 \): Focus on the Most Abundant ASVs  
+> *Simpson-like Diversity* → \( {}^2D \)
+
+Now we modify our question to wonder: **How many ASVs dominate each sample?** Here, rare ASVs hardly matter. For example, this is like walking into the library and only noticing the most abundant book titles, because they take up entire shelves. The rare titles are barely visible. Therefore, this measure emphasizes dominant species—those with many copies. `q = 2` tells us the effective number of dominant book titles, downplaying the presence of rare ones.
+
+- Baker A’s starter is almost all one ASV of 10 total ASVs: \( {}^2D_{\text{A}} \approx 1.2 \)  
+- Baker B’s 7 ASVs are balanced: \( {}^2D_{\text{B}} \approx 6.5 \)   
+- Baker C’s has 3 dominant ASVs out of 15: \( {}^2D_{\text{C}} \approx 3.5 \)  
+
+This tells us: **Baker B** has the most diverse community in terms of its *dominant* community members.
+
+
+---
+
+## Hill Number Summary Table
+
+| Value of \( q \) | Emphasis                    | Hill Number \( {}^qD \) | Interpretation                              |
+|------------------|-----------------------------|-------------------------|----------------------------------------------|
+| \( q = 0 \)      | Every ASV counts equally     | \( {}^0D \)             | ASV richness — a simple count                |
+| \( q = 1 \)      | Balance of common & rare     | \( {}^1D \)             | Shannon Diversity — balanced view            |
+| \( q = 2 \)      | Dominant ASVs matter most    | \( {}^2D \)             | Simpson Diversity — focus on major players        |
+
+---
+
+So, hopefully you can see that using Hill numbers like \( {}^qD \) gives you a powerful, flexible way to describe microbial diversity — from just counting ASVs to understanding community structure. Next, we will calculate the biodiversity with the [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) package. iNEXT focuses on three measures of biodiversity via the Hill numbers. For each Hill NUmber [iNEXT package](https://besjournals.onlinelibrary.wiley.com/doi/full/10.1111/2041-210X.12613) uses the observed abundance of species within a sample to compute diversity estimates and the associated 95% confidence intervals for the following two types of rarefaction and extrapolation (R/E):
+
+1. **Sample-size-based (or size-based) R/E curves**: iNEXT computes diversity estimates for
+rarefied and extrapolated samples up to an appropriate size (2x the total number of individuals/sequences in that sample). This type of sampling curve plots the diversity estimates with respect to sample size.
+2. **Coverage‐based R/E curves:** iNEXT computes diversity estimates for rarefied and extrapolated samples based on a standardized level of sample completeness (as measured by sample coverage) up to an appropriate coverage value. This type of sampling curve plots the diversity estimates with respect to sample coverage. **NOTE: Coverage is inapplicable to DADA2 datasets, as they lack singletons** (this is also why we can’t use Amy Willis’s breakaway approach). 
+
+
+> Warning! iNEXT takes a while to run, especially if your samples are deeply sequenced or if you have many samples! It is wise to calculate iNEXT early and then come back to the rest of the home work later on.
 
 ```{r iNEXT-biodiversity}
 # prepare the input data 
@@ -104,7 +229,9 @@ typeof(iNEXT_data)
 ```
 
 
-# Plot the Rarefaction Curves 
+# Rarefaction Curves 
+
+## `ggiNEXT` Rarefaction Curves 
 
 ```{r iNEXT-colors}
 # Prepare Colors 
@@ -137,11 +264,11 @@ head(iNEXT_color_df)
 ```
 
 
-Remember the output of iNEXT
+Remember the output of iNEXT: 
 
-q = 0, richness
-q = 1, shannon
-q = 2, simpson
+q = 0, Richness
+q = 1, Shannon
+q = 2, Simpson
 
 ```{r plot-iNEXT-rarefaction}
 ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") + 
@@ -153,7 +280,7 @@ ggiNEXT(iNEXT_data, type = 1, facet.var = "Order.q") +
   labs(y = "Effective Number of ASVs", x = "Number of Sequences") 
 ```
 
-# Manually Plot Rarefaction 
+## Manual Rarefaction Curves 
 
 ```{r manual-rarefaction}
 str(iNEXT_data)
@@ -190,11 +317,20 @@ iNEXT_manual_df %>%
   theme(legend.position = "bottom")
 ```
 
-# Boxplot: Diversity by Station 
+Fewf! Even though these samples are very shallowly sequenced, they are also all asymptotic! This is **great news!** We can draw conclusions about any of the biodiversity measures for these samples. :) 
 
-## Categorical Analysis 
 
-```{r make-obs-df}
+<span style="color: red;">INTERPRETATION #1:  What can you conclude from the ggiNEXT and manual rarefaction curve plots? Are there "enough" sequences to analyze the samples? Is it valid to make any conclusions about species richness when q = 0? What about when q = 1? Or q = 2? Why or why not?</span>
+
+
+<span style="color: red;">INTERPRETATION #2: What conclusions can you draw regarding your samples from the grouped rarefaction curves?</span>
+
+
+# Categorical Analysis 
+
+Here, in this example, our question regarding alpha diversity is related to station, which roughly correlates with salinity. In this case, we have a continuous variable on the y-axis and a categorical variable on the x-axis. 
+
+```{r station-salinity}
 obs_div_df <- 
   iNEXT_manual_df %>%
   dplyr::filter(Method == "Observed") 
@@ -202,6 +338,29 @@ obs_div_df <-
 # check it
 glimpse(obs_div_df)
 
+# Now plot station by salinity 
+obs_div_df %>%
+  dplyr::filter(fraction == "Whole") %>%
+  dplyr::filter(Order.q == 1) %>%
+  ggplot(aes(x = station, y = salinity_psu, fill = station, 
+             color = station)) + 
+  geom_jitter() + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  labs(y = "Salinity (PSU)") + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
+
+```
+
+Great, we can see that the Shipping Channel has the highest salinity! 
+
+```{r make-obs-df}
 # Plot boxplots by station against diversity
 obs_div_df %>%
   ggplot(aes(x = station, y = qD, fill = station, 
@@ -236,12 +395,13 @@ pairs(dplyr::select(env_df, -names), upper.panel = NULL)
 ```
 
 
-## PSU 
+## Continuous Variable—Practical Salinity Units: PSU 
 
-- "Practical Salinity Unit"
+A **Practical Salinity Unit** is equal to:  
+
 - 1 PSU = 1 g salt per 1,000 g water = 1 ppt
 
-ranges between 0 and >30
+PSU ranges between 0 and >30, where: 
 
 - Freshwater: 0-0.5
 - Brackish: 0.5 - 30
@@ -255,11 +415,95 @@ obs_div_df %>%
   geom_point(aes(color = station)) + 
   scale_color_manual(values = station_colors) + 
   labs(x = "Salinity (PSU)", y = "Effective Number of ASVs") +
-  stat_smooth(method = "lm") + 
+  stat_smooth(method = "lm", formula = y ~poly(x, 2)) + 
   theme_bw() + 
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom",
+        legend.title = element_blank())
 ```
 
 
+Here, there appears to be a few different results: 
+
+- There appears to be a negative & linear relationship between salinity and Richness. This indicates that freshwaters have the highest number of ASVs (genearlly around ~150 ASVs) and as we gain more and more salt in the water, there are fewer species (closer to ~110 ASVs)! We will test this more below. :)  
+- Taking the Richness relationship above, we also need to note that there seems to be a high amount of variability within the brackish samples, 
+- Shannon & Simpson diversity appear to have a "U" shaped diversity curve!  
+- The "U" shape indicates that diversity measures that also weight relative abundance (common and dominant taxa) is highest at the two ends of the spectrum... this indicates that there are fewer dominant species in brackish waters.  
+
+### Explore Richness More
+
+```{r richness-vs-salinity}
+# Make a richness data frame
+richness_df <- 
+  obs_div_df %>%
+  dplyr::filter(Method == "Observed") %>%
+  dplyr::filter(Order.q == 0)
+
+# Actually run the linear model
+rich_vs_sal_lm <- 
+  lm(qD ~ salinity_psu, data = richness_df)
+
+# Show me the model results
+rich_vs_sal_lm
+
+# Type?
+class(rich_vs_sal_lm)
+
+# Summary of lm
+summary(rich_vs_sal_lm)
+```
+
+In the output:
+
+- **Coefficients** refer to the 𝛽’s
+- **Estimate** is the estimate of each coefficient
+- **Std. Error** is the standard error of the estimate
+- **t value** is the coefficient divided by its standard error
+- **Pr(>|t|)** is the p-value for the coefficient
+- The **residual standard error** is the estimate of the variance of 𝜖
+- **Degrees of freedom** is the sample size minus # of coefficients estimated
+- **R-squared** is (roughly) the proportion of variance in the outcome explained by the model, instead we should always report the **adjusted R-squared**, which takes into penalizes the addition of unnecessary predictors, which provides a more accurate measure of model fit.
+    - Note that the R-squared value will always increase/stay the same when you add more predictors, even if they are not relevant!
+- The **F-statistic** compares the fit of the model as a whole to the null model (with no covariates)
+    - When comparing models, we always want to take the model with the higher F-statistic because it indicates a stronger relationship between the predictor varaibles and the dependent variables, suggesting that the model is better. 
+
+
+```{r plot-richness-sal, fig.height=4, fig.width=4, warning = FALSE}
+richness_df %>% 
+  ggplot(aes(x = salinity_psu, y = qD)) + 
+  geom_point(aes(color = station)) + 
+  stat_smooth(method = "lm") + 
+  labs(x = "Salinity (PSU)", y = "# of ASVs") + 
+  scale_color_manual(values = station_colors) + 
+  theme_bw() + 
+  theme(legend.position = "bottom",
+        legend.title = element_blank()) + 
+  geom_label(aes(x = 20, y = 70), hjust = 0, 
+             label = paste("Adj R2 = ",signif(summary(rich_vs_sal_lm)$adj.r.squared, 2),
+                           "\nIntercept =",signif(rich_vs_sal_lm$coef[[1]],3),
+                           " \nSlope =",signif(rich_vs_sal_lm$coef[[2]], 2),
+                           " \nP =",signif(summary(rich_vs_sal_lm)$coef[2,4], 2)))
+```
+
+
+
+# Final info for Reproducibility 
+
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
+
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
+
+## Session Information
+
+```{r session-info}
+# Ensure reproducibility with package version information
+devtools::session_info()
+```
 
 
