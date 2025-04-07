@@ -571,13 +571,6 @@ anova_station_rich <-
 anova_station_rich
 summary(anova_station_rich)
 
-# post-hoc Tukey Test! 
-tukey_station_rich <- 
-  TukeyHSD(anova_station_rich)
-
-# See the pairwise!
-tukey_station_rich
-
 # Richness by station 
 rich_ggboxplot <- 
   ggboxplot(obs_rich_df, x = "station", y = "qD", 
@@ -587,18 +580,13 @@ rich_ggboxplot <-
   geom_jitter(aes(color = station)) + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
-  labs(y = "ASV Richness") + 
+  labs(y = "# of Total ASVs (Richness)") + 
   # Add ANOVA & Tukey
-  stat_compare_means(method = "anova", label.y = max(obs_rich_df$qD) + 1) +  # ANOVA p-value
-  stat_compare_means(method = "tukey", label = "p.signif", 
-                     comparisons = list(c("A", "B"), c("A", "C"), c("B", "C")),
-                     label.y = c(max(df$value) + 0.5, max(df$value) + 1, max(df$value) + 1.5))
-  
-  # Now, let's add the KW results 
-  #stat_pvalue_manual(dunn_station_rich, hide.ns = TRUE, 
-  #                   tip.length = 0, step.increase = 0.05) +
-  #labs(subtitle = get_test_label(kw_station_rich, detailed = TRUE),
-  #     caption = get_pwc_label(dunn_station_rich)) + 
+  stat_compare_means(method = "anova", label.y = min(obs_rich_df$qD)) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = station), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.format",
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
   theme_bw() + 
   theme(legend.position = "none",
         axis.title.x = element_blank(),
@@ -606,17 +594,61 @@ rich_ggboxplot <-
                                    hjust = 1, 
                                    vjust = 1))
 
-# Show the plot
-rich_ggboxplot
+
 ```
 
-From the above plot, we can see that the richness 
 
-### Putting it together
+### Simpson
 
-```{r categorical-plots, fig.width=8, fig.height=4}
-salinity_ggboxplot + rich_ggboxplot
+```{r station-diversity-simpson, fig.height=4, fig.width=4}
+# Pull out simpson data 
+obs_simps_df <- 
+  obs_div_df %>%
+  dplyr::filter(Order.q == 2)
+
+# Calculate the ANOVA since the data is normal. :) 
+anova_station_simps <- 
+  aov(qD ~ station, data = obs_simps_df)
+
+# Look at it 
+anova_station_simps
+summary(anova_station_simps)
+
+# Simpson by station 
+simps_ggboxplot <- 
+  ggboxplot(obs_simps_df, x = "station", y = "qD", 
+          color = "station", fill = "station", alpha = 0.3,
+          outlier.shape = NA) + 
+  # Add points
+  geom_jitter(aes(color = station)) + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  labs(y = "# of Dominant ASVs (Simpson)") +
+  # Add ANOVA & Tukey
+  stat_compare_means(method = "anova", label.y = 80) +  # ANOVA p-value
+  geom_pwc(
+    aes(group = station), tip.length = 0, hide.ns = TRUE,
+    method = "t_test", label = "p.adj.signif",
+    step.increase = 0.08,
+    p.adjust.method = "fdr", bracket.nudge.y = -0.08) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 30,
+                                   hjust = 1, 
+                                   vjust = 1))
 ```
+
+```{r plot-rich-simps, fig.width=8, fig.height=4}
+# Show the plots
+rich_ggboxplot + simps_ggboxplot
+```
+
+On the left, we can see that the richness of Mesquite Bay and the Shipping Channel are lower. However, on the right when evaluating Simpson's Index (dominant ASVs), we can see that there is quite a bit of a differences between Stations where Mesquite Bay is far lower than all the other stations. 
+
+<span style="color: red;">INTERPRETATION #2:  If you have categorical data, what can you conclude regarding the role that all ASVs (richess, q = 0) versus common ASVs (Shannon, q = 1) versus dominant ASVs (Simpson, q = 2) have on the biodiversity of your samples as it relates to your variable of interest?</span>
+
+<span style="color: red;">INTERPRETATION #3:  How did you statistically test your scientific question in Interpretation #2? Why?</span>
 
 
 # Continuous Relationships - Salinity (PSU) vs Biodiversity
@@ -660,7 +692,7 @@ PSU ranges between 0 and >30, where:
 - Brackish: 0.5 - 30
 - Marine: >30
 
-```{r plot-div-salinity-lm}
+```{r plot-div-salinity-lm, fig.width=7, fig.height=3.5}
 # How does biodiversity change over the salinity gradient?
 obs_div_df %>%
   ggplot(aes(x = salinity_psu, y = qD)) + 
@@ -730,7 +762,7 @@ richness_df %>%
   theme_bw() + 
   theme(legend.position = "bottom",
         legend.title = element_blank()) + 
-  geom_label(aes(x = 20, y = 70), hjust = 0, 
+  geom_label(aes(x = 20, y = 60), hjust = 0, 
              label = paste("Adj R2 = ",signif(summary(rich_vs_sal_lm)$adj.r.squared, 2),
                            "\nIntercept =",signif(rich_vs_sal_lm$coef[[1]],3),
                            " \nSlope =",signif(rich_vs_sal_lm$coef[[2]], 2),
@@ -741,20 +773,23 @@ richness_df %>%
 ## Spearman Correlation
 
 
-
-```{r rich-vs-salinity-spearman}
+```{r rich-vs-salinity-spearman, fig.width=4, fig.height=4}
 richness_df %>% 
   ggplot(aes(x = salinity_psu, y = qD)) + 
   geom_point(aes(color = station)) + 
-  stat_smooth(method = "loess") + 
+  stat_smooth(method = "lm") + 
   labs(x = "Salinity (PSU)", y = "# of ASVs") + 
   scale_color_manual(values = station_colors) + 
   theme_bw() + 
   theme(legend.position = "bottom",
         legend.title = element_blank()) + 
   stat_cor(method = "spearman", label.x = 3, label.y = 30)  # customize label position
-
 ```
+
+<span style="color: red;">INTERPRETATION #4:  If you have continuous data, what can you conclude regarding the role that all ASVs (richess, q = 0) versus common ASVs (Shannon, q = 1) versus dominant ASVs (Simpson, q = 2) have on the biodiversity of your samples as it relates to your variable of interest?</span>
+
+<span style="color: red;">INTERPRETATION #5:  How did you statistically test your scientific question in Interpretation #4? Why?</span>
+
 
 
 # Final info for Reproducibility 
