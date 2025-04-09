@@ -1,0 +1,259 @@
+---
+title: "Between-Sample (Beta) Diversity of Microbes along a Salinity Gradient"
+author: "Mar Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      fig.path = "../figures/06_CommunityAnalysis")
+```
+
+# Goals 
+
+1. Load in the phyloseq data with rooted tree, colors, functions. 
+2. Evaluate the sequecing depth and, if needed, remove samples. 
+3. Normalize the read counts between samples. 
+4. Calculate community **dis**similarities: Numbers will always mean 0 = same; 1 = dissimilar/different.
+    - Sorensen
+    - Bray-Curtis
+    - UniFrac (weighted & unweighted) 
+5. Run some statistics: PERMANOVA & betadisper. 
+6. Plot some bar plots of specific microbial groups in the data. 
+
+## Inputs 
+
+1. Phylogenetic tree phyloseq object that we created in `analysis/04_Phylogenetic_Tree_Inspection.Rmd`
+
+## Outputs 
+
+1. Calculated beta-diversity dissimilarity measures. 
+2. Figures: PCoA and NMDS 
+3. Statistical Tests: PERMANOVA & betadisper 
+
+
+# Scientific Question 
+
+How does microbial composition change across a salinity gradient? 
+
+- *Null Hypothesis*: No change in microbial community with varying salinity. 
+- *Alternative Hypothesis*: Community composition will change with varying salt concentrations. 
+    - Rare Members? Jaccard, **Sorensen**, Unweighed-UniFrac 
+    - Dominant members? **Bray-Curtis**, Weighted-Unifrac
+    - Evolutionary relatedness? Unweighted or weighted UniFrac 
+
+
+# Set up 
+
+## Set the seed
+
+```{r set-seed}
+set.seed(238428)
+```
+
+## Load Packages, colors & functions  
+```{r load-packages}
+pacman::p_load(tidyverse, devtools, phyloseq, patchwork, vegan, 
+               install = FALSE)
+
+# Load Colors 
+source("code/colors.R")
+
+# Load functions 
+source("code/functions.R")
+```
+
+# 1. Load in the data 
+
+```{r load-data}
+# load phyloseq object
+load("data/04_PhylogeneticTree/phytree_preprocessed_physeqs.RData")
+archaeal_rooted_physeq
+
+# Intuition check on seq depth
+min(sample_sums(archaeal_rooted_physeq))
+
+# Create Metadata_df 
+metadata_df <- 
+  archaeal_rooted_physeq %>%
+  sample_data() %>%
+  data.frame()
+```
+
+# Normalizing the Read Depth 
+
+## 2. Explore the Raw Read Counts 
+
+```{r explore-read-counts}
+# calculate read counts per sample 
+raw_TotalSeqs_df <- 
+  archaeal_rooted_physeq %>%
+  # Calculate the total number of sequences/reads
+  sample_sums() %>%
+  data.frame()
+
+# Take a look 
+head(raw_TotalSeqs_df)
+
+# Rename the column 
+colnames(raw_TotalSeqs_df)[1] <- "TotalSeqs"
+
+# add a new column of num_ASVs (RAW, non-noramlized # ASVs)
+raw_TotalSeqsASVs_df <- 
+  raw_TotalSeqs_df %>%
+  mutate(num_ASVs = colSums(otu_table(archaeal_rooted_physeq) > 1))
+
+#View(raw_TotalSeqsASVs_df)
+
+# Plot histogram of seq depth 
+raw_TotalSeqsASVs_df %>%
+  ggplot(aes(x = TotalSeqs)) + 
+  geom_histogram(bins = 50) + 
+  scale_x_continuous(limits = c(0, 7500)) + 
+  labs(title = "Raw Seq Depth ") + 
+  theme_bw()
+
+# Plot Seq Depth versus num_ASVs
+raw_TotalSeqsASVs_df %>%
+  ggplot(aes(x = num_ASVs, y = TotalSeqs)) + 
+  geom_point() + 
+  scale_y_continuous(limits = c(0, 7500)) +
+  geom_smooth(method = "lm") + 
+  labs(title = "Seq Depth vs # ASVs")
+
+summary(lm(TotalSeqs ~ num_ASVs, data = raw_TotalSeqsASVs_df))
+```
+
+
+# 3. Scale Read Counts 
+
+```{r scale-reads}
+min(sample_sums(archaeal_rooted_physeq))
+
+# Scale the reads 
+scaled_physeq <- 
+  archaeal_rooted_physeq %>%
+  scale_reads(round = "matround")
+
+# Look at it 
+scaled_physeq
+
+# Confirm seq read depth of scaled_physeq 
+
+scaled_TotalSeqs_df <- 
+  scaled_physeq %>%
+  sample_sums() %>%
+  data.frame()
+
+colnames(scaled_TotalSeqs_df)[1] <- "TotalSeqs"
+
+# add a new column of num_ASVs (RAW, non-noramlized # ASVs)
+scaled_TotalSeqsASVs_df <- 
+  scaled_TotalSeqs_df %>%
+  mutate(num_ASVs = colSums(otu_table(scaled_physeq) > 1))
+
+
+# Plot it! 
+scaled_TotalSeqs_df %>%
+  ggplot(aes(x = TotalSeqs)) + 
+  geom_histogram(bins = 50) + 
+  scale_x_continuous(limits = c(0, 7500)) + 
+  theme_bw()
+
+# Scaling always gives us a range! 
+min(scaled_TotalSeqs_df$TotalSeqs)
+range(scaled_TotalSeqs_df)
+
+41/max(scaled_TotalSeqs_df$TotalSeqs)
+#View(scaled_TotalSeqs_df)
+
+scaled_TotalSeqsASVs_df %>%
+  ggplot(aes(x = num_ASVs, y = TotalSeqs)) + 
+  geom_point() + 
+  scale_y_continuous(limits = c(1500, 1600)) +
+  #geom_smooth(method = "lm") + 
+  labs(title = "Scaled: Seq Depth vs # ASVs")
+```
+
+
+# Calculate & Visualize Community Dissimilarity 
+
+Two different visualizations: 
+
+1. PCoA - Eigen-based analysis, linear, axis coefficients are meaningful because they represent the eigenvectors. 
+2. NMDS - Non-linear method, axes are not meaningful, smush many axes of data into 2 axes 
+
+## Sorensen Dissimilarity 
+
+### Calculate dissimilarity 
+
+#### PERMANOVA & betadisper 
+
+```{r soren-dis}
+scaled_soren_dist <- 
+  phyloseq::distance(scaled_physeq, method = "bray", binary = TRUE)
+
+class(scaled_soren_dist)
+
+## PERMANOVA: Are the centroids different? 
+adonis2(scaled_soren_dist ~ station, data = metadata_df)
+adonis2(scaled_soren_dist ~ station * date, data = metadata_df, by = "margin")
+
+# Betadisper 
+dispr_soren_station <- betadisper(scaled_soren_dist, metadata_df$station)
+permutest(dispr_soren_station)
+
+```
+
+
+### Plot PCoA 
+
+```{r sore-pcoa}
+# First, calculate PCoA with Soresen
+scaled_soren_pcoa <- 
+  ordinate(physeq = scaled_physeq,
+         method = "PCoA",
+         distance = "bray", binary = TRUE)
+
+# Take a quick look
+str(scaled_soren_pcoa)
+
+# Plot it! 
+plot_ordination(physeq = scaled_physeq,
+                ordination = scaled_soren_pcoa,
+                color = "station",
+                title = "Sorensen PCoA") + 
+  scale_color_manual(values = station_colors) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+```
+
+
+
+### Plot NMDS 
+```{r soren-nmds}
+scaled_soren_nmds <- 
+  ordinate(physeq = scaled_physeq,
+         method = "NMDS",
+         distance = "bray", binary = TRUE)
+
+# Plot it! 
+plot_ordination(physeq = scaled_physeq,
+                ordination = scaled_soren_nmds,
+                color = "station",
+                title = "Sorensen NMDS") + 
+  scale_color_manual(values = station_colors) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  theme_bw() + 
+  theme(legend.position = "bottom")
+```
+
+
+
+
+
