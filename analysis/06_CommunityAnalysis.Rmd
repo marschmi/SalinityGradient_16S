@@ -15,37 +15,39 @@ knitr::opts_chunk$set(echo = TRUE,
 
 # Goals 
 
-1. Load in the phyloseq data with rooted tree, colors, functions. 
-2. Evaluate the sequecing depth and, if needed, remove samples. 
-3. Normalize the read counts between samples. 
-4. Calculate community **dis**similarities: Numbers will always mean 0 = same; 1 = dissimilar/different.
-    - Sorensen
-    - Bray-Curtis
-    - UniFrac (weighted & unweighted) 
-5. Run some statistics: PERMANOVA & betadisper. 
-6. Plot some bar plots of specific microbial groups in the data. 
+1. Load in phyloseq data with rooted tree & colors and functions.  
+2. Evaluate sequencing depth and remove samples, if needed.  
+3. Normalize the read counts between samples.  
+4. Calculate community **dis**similarities. Numbers between 0 and 1. If 0, completely similar versus if they are 1, then they're completely dissimilar.   
+    a. **Sorensen**: Shared Species as a binary value: Abundance-unweighted 
+    b. **Bray-Curtis**: Shared Abundant species: Abundance-weighted
+    c. **(Abundance-)Weighted UNIFRAC**: Consider Abundant Species and where they fall on the tree  
+5. Visualize the community data with two unconstrained Ordinations:  
+    a. **PCoA**: Linear Method. Eigenvalue = how much variation is explained by each axis. Choose to view axis 1, 2, 3, etc. and plot them together.  
+    b. **NMDS**: Non-linear. Smush multiple Dimensions into 2 or 3 axes. Need to report Stress value (ideally <0.15).  
+6. Run statistics with PERMANOVA and betadispR. 
+7. Plot some bar plots of specific microbial groups in the data. 
 
 ## Inputs 
 
-1. Phylogenetic tree phyloseq object that we created in `analysis/04_Phylogenetic_Tree_Inspection.Rmd`
+1. We will need the `phytree_preprocessed_physeq.RData`, which includes a rooted tree (ideally within the archaea!) that we created in `analysis/04B_Phylogenetic_Tree_Inspection.Rmd`. 
 
 ## Outputs 
 
-1. Calculated beta-diversity dissimilarity measures. 
-2. Figures: PCoA and NMDS 
-3. Statistical Tests: PERMANOVA & betadisper 
+*This is an exciting analysis!!! We get to answer another one of our scientific questions!*
+
+1. Calculated beta-diversity dissimilarity measures (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) across every sample. 
+2. Ordination figures (*i.e.,* PCoA/NMDS) to include in the scientific paper that visualize the data as it relates to the scientific question.
+3. Statistical tests (*i.e.,* PERMANOVA & betadisper) conveying the measured and quantified changes and patterns in biodiversity.
 
 
 # Scientific Question 
 
-How does microbial composition change across a salinity gradient? 
+How does microbial composition change across a salinity gradient?
 
-- *Null Hypothesis*: No change in microbial community with varying salinity. 
-- *Alternative Hypothesis*: Community composition will change with varying salt concentrations. 
-    - Rare Members? Jaccard, **Sorensen**, Unweighed-UniFrac 
-    - Dominant members? **Bray-Curtis**, Weighted-Unifrac
-    - Evolutionary relatedness? Unweighted or weighted UniFrac 
-
+- *Null Hypothesis:* Microbial composition (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) does not change across a salinity gradient. 
+- *Alternative #1 Hypothesis:* Microbial composition (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) will become more dissimilar as salt concentration lowers. There is an inverse relationship between richness and salinity.
+- *Altnerative #2 Hypothesis*: Dominant members of the microbial community (*e.g.* Bray-Curtis, abundance-weighted UniFrac) are unique in freshwater compared to salt water.
 
 # Set up 
 
@@ -142,6 +144,10 @@ scaled_physeq <-
 # Look at it 
 scaled_physeq
 
+# Look at it more!
+#View(data.frame(otu_table(archaeal_rooted_physeq)))
+#View(data.frame(otu_table(scaled_physeq)))
+
 # Confirm seq read depth of scaled_physeq 
 
 scaled_TotalSeqs_df <- 
@@ -177,6 +183,157 @@ scaled_TotalSeqsASVs_df %>%
   scale_y_continuous(limits = c(1500, 1600)) +
   #geom_smooth(method = "lm") + 
   labs(title = "Scaled: Seq Depth vs # ASVs")
+```
+
+# Beta Diversity: Dissimilarity Metrics in Microbial Ecology
+
+## Similarity versus Dissimilarity
+
+In microbial ecology, **beta diversity** refers to the **similiarty or dissimilarity**, which represent the unique-ness between two microbial community samples. (Dis)similarity values range from **0 to 1**:
+
+- **Similarity**: Values close to 1 = communities are the same whereas 0 = completely different communities. 
+- **Dissimilarity**: Values close to 1 = the communities are unique whereas 0 refers to identical communities. 
+
+Most ecological studies and ordination plots use **dissimilarity**. For some metrics like Jaccard and Sorensen, you’ll see formulas written as similarity—but it's easy to convert them. 
+
+Different dissimilarity metrics emphasize different aspects of community differences—such as presence/absence, abundance, or evolutionary relatedness (phylogeny). Choosing the right metric depends on your scientific question! It is up to us as data analysts to run each of these dissimilarities on our microbial community samples. This multi-faceted approach will provide a multifaceted view of our microbial communities of interest.
+
+### Why do most ecological studies use **dissimilarity**?
+
+In short: dissimilarity tells us how different things are—just like distance. That’s why it’s the default for ordination, clustering, and most ecological statistics. Most ecological studies and ordination plots use dissimilarity (instead of similarity) for several practical and conceptual reasons:
+
+1. **Distance = Difference is an intuitive interpretation**: In ecological studies, dissimilarity is more commonly used than similarity because it aligns more naturally with how we interpret spatial relationships and ecological gradients. Dissimilarity measures provide a sense of how far apart two communities are in terms of their species composition, abundance, or evolutionary history (*remember, this depends on our dissimilarity metric!*). This framing is intuitive: the more dissimilar two samples are, the greater the distance between them in ecological space.
+
+2. **Ordination methods are built for distances:** Ordination methods such as **Principal Coordinates Analysis (PCoA)** and **Non-metric Multidimensional Scaling (NMDS)** (*more on this below!*) are specifically designed to work with dissimilarity (or distance) matrices. These techniques use dissimilarity values to position samples in a low-dimensional space where the distance between points reflects how different the communities are. This makes it easy to visualize clustering patterns, gradients, or dispersions among samples. If we were to use similarity instead, we’d have to invert or transform the values to interpret them spatially, which can introduce confusion.
+
+3. **Avoids ambiguity in similiarty scaling**: Using dissimilarity also avoids ambiguity in scaling. While similarity values like 0.8 or 0.9 may indicate that two samples are quite alike, they don't translate as directly to spatial relationships. In contrast, a dissimilarity of 0.2 is straightforward—it tells us that the communities are relatively close, and a value of 0.8 signals they are far apart. This linear and spatial logic makes dissimilarity the more practical choice for ecological analyses.
+
+4. **Consistency across fields and tools**: Moreover, dissimilarity metrics are the standard input for most statistical and visualization tools used in microbial ecology, including software packages like QIIME2, phyloseq, and vegan in R. These tools assume you're comparing how different communities are from one another, not how similar they are. As a result, dissimilarity-based approaches are not only easier to interpret but also more compatible with existing methods and workflows.
+
+5. **Easier to identify ecological gradients**: Therefore, dissimilarity measures dominate ecological studies and visualizations because they match how we interpret differences in space, work seamlessly with ordination and clustering methods, and provide a clear, consistent framework for understanding ecological patterns.
+
+
+## Common dissimilarity measures
+
+### How do I choose the right dissimilarity metric?
+
+| Scientific Question                                                             | Recommended Metric(s)              |
+|----------------------------------------------------------------------------------|------------------------------------|
+| Do the two environments share the same microbes, regardless of abundance?       | Jaccard, Sorensen             |
+| How does abundance differ between communities?                                   | Bray-Curtis                        |
+| Are there differences in the evolutionary history of microbes between samples?  | UniFrac (unweighted or weighted)   |
+| Do dominant, evolutionarily distinct microbes vary in abundance?                | Weighted UniFrac                   |
+
+Choosing the right dissimilarity measure starts with understanding what aspect of community difference you're trying to capture. If you're asking whether two environments simply contain the same taxa—regardless of how abundant those taxa are—then presence/absence-based measures like **Jaccard** or **Sorensen-Dice** are appropriate. These metrics are particularly useful when working with rarefied data, or when you're more concerned with community membership than abundance.
+
+If you're interested in how **abundant** different taxa are across communities—especially if dominant taxa may be ecologically important—then an abundance-based metric like **Bray-Curtis** is a better choice. Bray-Curtis emphasizes changes in relative abundance and is sensitive to shifts in dominant taxa, making it useful for studying processes like competitive exclusion or resource-driven community turnover.
+
+When your data include **phylogenetic information**—for example, from 16S rRNA gene amplicon sequencing—you may want to use **UniFrac** metrics. **Unweighted UniFrac** is good for detecting evolutionary differences based on presence/absence (i.e., whether the communities harbor different lineages), while **Weighted UniFrac** incorporates both **phylogeny and abundance**, allowing you to explore whether communities differ in their evolutionary makeup **and** in the dominance of certain lineages. These are especially useful when you care about deep evolutionary divergence or when function may correlate with phylogeny.
+
+Practical considerations also matter. For example, UniFrac requires a phylogenetic tree, which takes time and computation to build; Bray-Curtis and Jaccard don’t. Some metrics are also more sensitive to sampling depth and rare taxa, so normalization or rarefaction methods may be necessary before analysis.
+
+In short, let your **ecological question** guide your metric choice: use **presence/absence** metrics to assess "who's there," **abundance-based** metrics to examine "how much is there," and **phylogenetic** metrics to explore "how evolutionarily different are these communities." Often, using **multiple metrics in parallel** can help reveal different facets of the data and strengthen your ecological interpretations.
+
+These dissimilarity measures are foundational tools in microbial ecology and are often visualized using **ordination methods** (e.g., PCoA, NMDS) to interpret community shifts across environments, treatments, or gradients.
+
+| Metric              | Type                | Similarity Formula | Dissimilarity Formula       | Uses Abundance | Uses Phylogeny |
+|---------------------|---------------------|--------------------|-----------------------------|----------------|----------------|
+| Jaccard             | Presence/absence    | \( \frac{A}{A+B+C} \) | \( \frac{B+C}{A+B+C} \)     | ❌             | ❌             |
+| Sorensen-Dice       | Presence/absence    | \( \frac{2A}{2A+B+C} \) | \( \frac{B+C}{2A+B+C} \)     | ❌             | ❌             |
+| Bray-Curtis         | Abundance-based     | —                  | \( \frac{\sum |a_i - b_i|}{\sum (a_i + b_i)} \) | ✅ | ❌ |
+| Unweighted UniFrac  | Phylogenetic + presence/absence | — | \( \frac{\text{unique branch}}{\text{total branch}} \) | ❌ | ✅ |
+| Weighted UniFrac    | Phylogenetic + abundance-based | — | \( \frac{\text{weighted unique branch}}{\text{total branch}} \) | ✅ | ✅ |
+
+## Five Types of Dissimilarities
+
+### A. Jaccard Dissimilarity
+
+- **Type:** Presence/absence
+- **Formula:**  
+  \[
+  D_J = \frac{B + C}{A + B + C}
+  \]
+  Where:  
+  - *A* = number of taxa shared by both samples  
+  - *B* = taxa unique to sample 1  
+  - *C* = taxa unique to sample 2
+
+- **Interpretation:** Measures dissimilarity in community **membership**—i.e., how many taxa are **not shared** between the samples.
+
+- **Ecological question:**  *How unique are the species between two communities, ignoring abundance?*
+
+### B. Sorensen-Dice Dissimilarity
+
+- **Type:** Presence/absence (weighted toward shared taxa)
+- **Similarity formula**:  
+  \[
+  S_S = \frac{2A}{2A + B + C}
+  \]
+- **Dissimilarity formula**:  
+  \[
+  D_S = 1 - S_S = \frac{B + C}{2A + B + C}
+  \]
+
+- **Interpretation:** Similar to Jaccard, but gives **greater weight to shared taxa**, making it more sensitive to overlap in community membership. The Sorensen-Dice is mathematically similar to Bray-Curtis, which makes it a nice side-by-side comparison with Bray-Curtis. 
+
+- **Ecological question:** *To what extent do two communities differ in presence/absence, giving extra credit for shared species?*
+
+### C. Bray-Curtis Dissimilarity
+
+- **Type:** Abundance-based
+- **Formula:**  
+  \[
+  D_{BC} = \frac{\sum_i |a_i - b_i|}{\sum_i (a_i + b_i)}
+  \]
+  Where:  
+  - \( a_i \), \( b_i \) are the abundances of taxon *i* in samples A and B
+
+- **Interpretation:** Quantifies dissimilarity based on **abundance differences**—especially sensitive to changes in dominant taxa. Often, it is run together with the Sorensen-Dice dissimilarity as these two metrics are mathematically similar. 
+
+- **Ecological question:** *How different are two communities in terms of the* ***abundance*** *of shared and unique taxa?*
+
+### D. Unweighted UniFrac Dissimilarity
+
+- **Type:** Phylogenetic, presence/absence
+- **Formula (conceptual):**  
+  \[
+  D_{UU} = \frac{\text{Unique branch length}}{\text{Total branch length}}
+  \]
+
+- **Interpretation:** Measures the proportion of **phylogenetic branch lengths** that are unique to either sample, ignoring abundance. This measure requires a curated and a rooted tree, ideally within a meaningful outgroup, like the Archaea. The curation and visual inspection of the tree is important as this metric is very sensitive to long branches! Therefore, we need to do our diligence with the quality of our input tree. 
+
+- **Ecological question:**  *How evolutionarily distinct are the community members between samples, regardless of how abundant they are?*
+
+### E. Weighted UniFrac Dissimilarity
+
+- **Type:** Phylogenetic, abundance-weighted
+- **Formula (conceptual):**  
+  \[
+  D_{WU} = \frac{\text{Abundance-weighted unique branch length}}{\text{Total branch length}}
+  \]
+
+- **Interpretation:** Combines **phylogeny and abundance**—emphasizes both how evolutionarily distinct and how **numerically different** the communities are, giving more weight to abundant taxa. This measure requires a curated and a rooted tree, ideally within a meaningful outgroup, like the Archaea. The curation and visual inspection of the tree is important as this metric is very sensitive to long branches! Therefore, we need to do our diligence with the quality of our input tree. 
+
+- **Ecological question:** *How much do two communities differ in the* ***abundance of evolutionarily distinct*** *lineages?*
+
+## Calculating dissimilarity
+
+Now, let's make distance objects of each of the dissimiliarity measures above! 
+
+````{r calc-dissimilarity}
+# Sorensen Dissimiliarty
+scaled_sorensen_dist <- phyloseq::distance(scaled_physeq, method = "bray", binary = TRUE)
+
+# Bray-Curtis Dissimiliarty
+scaled_bray_dist <- phyloseq::distance(scaled_rooted_physeq, method = "bray")
+
+# Abundance-Unweighted UniFrac
+scaled_wUnifrac_dist <- phyloseq::distance(scaled_rooted_physeq, method = "wunifrac")
+
+# Abundance-Weighted UniFrac
+scaled_wUnifrac_dist <- phyloseq::distance(scaled_rooted_physeq, method = "wunifrac")
+
+
 ```
 
 
