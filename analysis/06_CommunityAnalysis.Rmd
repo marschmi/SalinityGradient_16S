@@ -28,7 +28,6 @@ knitr::opts_chunk$set(echo = TRUE,
 6. Visualize the community data with two unconstrained Ordinations:  
     a. **PCoA**: Linear Method. Eigenvalue = how much variation is explained by each axis. Choose to view axis 1, 2, 3, etc. and plot them together.  
     b. **NMDS**: Non-linear. Smush multiple Dimensions into 2 or 3 axes. Need to report Stress value (ideally <0.15).  
-7. Plot some bar plots of specific microbial groups in the data. 
 
 ## Inputs 
 
@@ -42,7 +41,6 @@ knitr::opts_chunk$set(echo = TRUE,
 2. Ordination figures (*i.e.,* PCoA/NMDS) to include in the scientific paper that visualize the data as it relates to the scientific question.
 3. Statistical tests (*i.e.,* PERMANOVA & betadisper) conveying the measured and quantified changes and patterns in biodiversity.
 
-
 # Scientific Question 
 
 How does microbial composition change across a salinity gradient?
@@ -52,6 +50,13 @@ How does microbial composition change across a salinity gradient?
 - *Altnerative #2 Hypothesis*: Dominant members of the microbial community (*e.g.* Bray-Curtis, abundance-weighted UniFrac) are unique in freshwater compared to salt water.
 
 # Set up 
+
+## Timing of this script
+
+```{r rmd-start}
+# What time did we start running this script? 
+start_time <- Sys.time()
+```
 
 ## Set the seed
 
@@ -86,6 +91,21 @@ metadata_df <-
   archaeal_rooted_physeq %>%
   sample_data() %>%
   data.frame()
+```
+
+## Remove outlier sample
+
+Through the biodiversity and also in class, we saw that there was a clear outlier in the data named `20210615-MA-ABB2F`. This sample also appeared to be the shallowest sample in terms of sequencing and also an outlier in terms of biodiversity. So, we will remove it for the samples here. 
+
+```{r rm-outlier}
+archaeal_rooted_physeq <- 
+  archaeal_rooted_physeq %>%
+  subset_samples(names != "20210615-MA-ABB2F") %>%
+  # And remove any ASVs unique to this sample, just in case.
+  prune_taxa(taxa_sums(.) > 0, .)
+
+# Check that we now have 88 samples 
+archaeal_rooted_physeq
 ```
 
 # Normalizing the Read Depth 
@@ -129,6 +149,7 @@ raw_TotalSeqsASVs_df %>%
   geom_smooth(method = "lm") + 
   labs(title = "Seq Depth vs # ASVs")
 
+# is it significant? 
 summary(lm(TotalSeqs ~ num_ASVs, data = raw_TotalSeqsASVs_df))
 ```
 
@@ -164,7 +185,6 @@ scaled_TotalSeqsASVs_df <-
   scaled_TotalSeqs_df %>%
   mutate(num_ASVs = colSums(otu_table(scaled_physeq) > 1))
 
-
 # Plot it! 
 scaled_TotalSeqs_df %>%
   ggplot(aes(x = TotalSeqs)) + 
@@ -173,16 +193,26 @@ scaled_TotalSeqs_df %>%
   theme_bw()
 
 # Scaling always gives us a range! 
-min(scaled_TotalSeqs_df$TotalSeqs)
+# MInimum sequences
+min(scaled_TotalSeqs_df$TotalSeqs) 
+# Total Range 
 range(scaled_TotalSeqs_df)
-
-41/max(scaled_TotalSeqs_df$TotalSeqs)
+# How many is that range? 
+range_seqs <- (max(scaled_TotalSeqs_df$TotalSeqs) - min(scaled_TotalSeqs_df$TotalSeqs))
+range_seqs
+# And in terms of percent? 
+range_seqs/max(scaled_TotalSeqs_df$TotalSeqs)
 #View(scaled_TotalSeqs_df)
 
+# Set the axis min and max for the next plot 
+max_y <- max(scaled_TotalSeqs_df$TotalSeqs) + 10
+min_y <- min(scaled_TotalSeqs_df$TotalSeqs) - 10
+
+# Now, draw the plot 
 scaled_TotalSeqsASVs_df %>%
   ggplot(aes(x = num_ASVs, y = TotalSeqs)) + 
   geom_point() + 
-  scale_y_continuous(limits = c(1500, 1600)) +
+  scale_y_continuous(limits = c(min_y, max_y)) +
   #geom_smooth(method = "lm") + 
   labs(title = "Scaled: Seq Depth vs # ASVs")
 ```
@@ -505,7 +535,7 @@ The result from `permutest()` is a robust non-parametric p-value testing whether
 | `betadisper()` | Computes within-group distances to centroids (dispersion)     | ❌ No                | Distances, centroids, model object |
 | `permutest()`  | Tests if group dispersions differ using permutations          | ✅ Yes               | F-value, permutation-based p-value |
 
-****
+
 
 ```{r betadisper}
 # Homogeneity of Disperson test with beta dispr
@@ -520,10 +550,40 @@ permutest(dispr_sorensen_date)
 ```
 
 
+Interpreting `betadisper()/permutest()` results:
+
+- **Station** has a significant `betadisper()/permutest()` result. This means that we cannot 
+- **Date** does not have a significant `betadisper()/permutest()` result. Therefore We can conclude 
+
+# Interpreting PERMANOVA with Betadisper
+
+### 📦 So how do you interpret both being significant?
+
+If **PERMANOVA is significant** _and_ **betadisper is also significant**, it suggests that:
+
+- Your groups **differ in community composition** (centroids), **but** also
+- They may **differ in dispersion** (variance/spread), which can influence the PERMANOVA result
+
+This raises the possibility that the PERMANOVA significance is at least partly driven by **differences in group variability**, not just true compositional shifts.
+
+| Scenario                                       | Interpretation                                                               |
+|------------------------------------------------|-------------------------------------------------------------------------------|
+| ✅ PERMANOVA significant<br>❌ betadisper not significant | Likely true compositional differences (valid PERMANOVA result)                |
+| ✅ PERMANOVA significant<br>✅ betadisper significant     | Differences may be due to dispersion, not centroids — interpret with caution |
+
+**Next steps:**
+
+- Use ordination plots to visually assess whether centroids are distinct or just differently dispersed (*We are about to do this!*)
+- Plot distances to group centroids
+- Consider running PERMANOVA on a subset with equal dispersions
+- Reflect on ecological plausibility — are the dispersion differences biologically meaningful? Sometimes real biological processes cause both composition shifts and dispersion changes (e.g., disturbance, environmental heterogeneity)! So, don't lose your heart about your data yet! :) 
+
+> Even with unequal dispersion, true ecological differences can still exist — the key is to **interpret with care** and use supporting evidence.
+
+If this happens, the results could be written something like: "*PERMANOVA indicated significant differences in microbial community composition across treatments (p < 0.001), though betadisper was also significant (p = 0.03), suggesting differences in within-group dispersion. Ordination plots showed distinct clustering of treatment centroids, supporting genuine compositional differences, though interpretations must consider potential heterogeneity in dispersion.*"
 
 
 # 6. Visualize Community Dissimilarity with Ordination
-
 
 ## What are ordination methods? 
 
@@ -648,6 +708,18 @@ We can conclude that:
 
 ## 6b. NMDS: Non-Metric Multidimensional Scaling 
 
+**Non-metric Multidimensional Scaling (NMDS)** is a rank-based ordination method commonly used in microbial ecology to visualize differences in community composition. Unlike metric methods like PCoA, *NMDS does not preserve exact distances but instead maintains the rank order of dissimilarities between samples*. This makes it well-suited for ecological data that are high-dimensional, non-linear, and zero-inflated.
+
+NMDS works by iteratively arranging samples in a low-dimensional space (typically 2D) to best match the original distance rankings from a dissimilarity matrix, such as Bray-Curtis. The quality of the fit is measured by stress—lower stress indicates a better match. Because NMDS does not assume linear relationships and is less prone to artifacts like the arch effect, it is ideal for exploring patterns in complex microbial datasets. Interpretation focuses on the relative positioning of samples rather than axis variance, making it especially useful for identifying ecological gradients or clustering by treatment or site.
+
+In NMDS, the **stress value** is a key metric that quantifies how well the lower-dimensional ordination preserves the rank order of distances from the original high-dimensional dissimilarity matrix. In simple terms, stress reflects how faithfully the 2D or 3D plot represents the real structure of your microbial community data. The lower the stress, the better the ordination represents the data.
+
+- **Stress < 0.1** is often reported as a strong result.
+- **Stress < 0.2** is still commonly accepted but it's best if < 0.15, especially with complex, high-diversity microbiome data (*e.g.,* 16S or metagenomic datasets with many samples and ASVs).
+- Some papers explicitly state they use NMDS for visualizing trends, not exact distances, so stress < 0.2 is considered acceptable in that context.
+- It’s common to see NMDS with stress values between 0.08–0.15 in published studies.
+
+*Okay, let's draw some NMDS plots!*
 
 ```{r soren-nmds}
 ## SORENSEN 
@@ -657,7 +729,7 @@ scaled_soren_nmds <-
          distance = "bray", binary = TRUE)
 
 # Plot it! 
-sorensen_nmds <- 
+sorensen_nmds_plot <- 
   plot_ordination(physeq = scaled_physeq,
                 ordination = scaled_soren_nmds,
                 color = "station",
@@ -669,11 +741,30 @@ sorensen_nmds <-
   theme_bw() + 
   theme(legend.position = "right")
 
-# Show the plot 
-sorensen_nmds
+### Bray-Curtis 
+# Second, calculate NMDS with Bray-Curtis
+scaled_bray_nmds <- 
+  ordinate(physeq = scaled_physeq,
+         method = "NMDS",
+         distance = "bray", binary = FALSE)
 
+# Plot it: Bray-Curtis NMDS 
+bray_nmds_plot <- 
+  plot_ordination(physeq = scaled_physeq,
+                ordination = scaled_bray_nmds,
+                color = "station",
+                shape = "date",
+                title = "Bray-Curtis NMDS") + 
+  scale_color_manual(values = station_colors) + 
+  scale_shape_manual(values = c(15, 16, 17)) + 
+  geom_point(size = 5, alpha = 0.5, aes(color = station)) + 
+  theme_bw() + 
+  theme(legend.position = "right")
 
-
+# Show the plots 
+sorensen_nmds_plot + bray_nmds_plot + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
 ## Continuous PERMANOVA
@@ -703,20 +794,23 @@ bray_station_adonis_margin
 ```
 
 
-## Can I mix continuous and categorical variables in a PERMANOVA? 
+# Final info for Reproducibility 
 
-Yes! 
+## Check Render Time
+```{r stop-time}
+# Take the time now that we are at the end of the script
+end_time <- Sys.time()
+end_time 
 
-# Phylogeny
+# Echo the elapsed time
+elapsed_time <- round((end_time - start_time), 3)
+elapsed_time
+```
 
-```{r unifrac-PERMANOVA}
-# Abundance-Unweighted UniFrac
-uUnifrac_station_adonis <- adonis2(scaled_uUnifrac_dist ~ station, data = metadata_df, by = "margin")
-print(uUnifrac_station_adonis)
+## Session Information
 
-# Abundance-Weighted UniFrac
-wUnifrac_station_adonis <- adonis2(scaled_wUnifrac_dist ~ station, data = metadata_df, by = "margin")
-print(wUnifrac_station_adonis)
-
+```{r session-info}
+# Ensure reproducibility with package version information
+devtools::session_info()
 ```
 
