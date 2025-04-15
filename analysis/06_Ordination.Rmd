@@ -1,8 +1,19 @@
 ---
 title: "Between-Sample (Beta) Diversity of Microbes along a Salinity Gradient"
 author: "Mar Schmidt"
-date: "`r Sys.Date()`"
-output: html_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document: 
+    code_folding: show
+    theme: spacelab
+    highlight: pygments
+    keep_md: no
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  keep_md: true  
 editor_options: 
   chunk_output_type: console
 ---
@@ -10,7 +21,7 @@ editor_options:
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
-                      fig.path = "../figures/06_CommunityAnalysis")
+                      fig.path = "../figures/06_Ordination/")
 ```
 
 # Goals 
@@ -49,6 +60,8 @@ How does microbial composition change across a salinity gradient?
 - *Alternative #1 Hypothesis:* Microbial composition (*e.g.* Sorensen, Bray-Curtis, abundance-unweighted and -weighted UniFrac) will become more dissimilar as salt concentration lowers. There is an inverse relationship between richness and salinity.
 - *Altnerative #2 Hypothesis*: Dominant members of the microbial community (*e.g.* Bray-Curtis, abundance-weighted UniFrac) are unique in freshwater compared to salt water.
 
+<span style="color: red;">INTERPRETATION #1:  What is your scientific question and hypotheses? Do they relate to abundance? Presence/absence? Phylogeny?</span>
+
 # Set up 
 
 ## Timing of this script
@@ -85,12 +98,6 @@ archaeal_rooted_physeq
 
 # Intuition check on seq depth
 min(sample_sums(archaeal_rooted_physeq))
-
-# Create Metadata_df 
-metadata_df <- 
-  archaeal_rooted_physeq %>%
-  sample_data() %>%
-  data.frame()
 ```
 
 ## Remove outlier sample
@@ -106,13 +113,19 @@ archaeal_rooted_physeq <-
 
 # Check that we now have 88 samples 
 archaeal_rooted_physeq
+
+# Create Metadata_df 
+metadata_df <- 
+  archaeal_rooted_physeq %>%
+  sample_data() %>%
+  data.frame()
 ```
 
 # Normalizing the Read Depth 
 
 ## 2. Explore the Raw Read Counts 
 
-```{r explore-read-counts}
+```{r explore-read-counts, fig.width=6, fig.height=3}
 # calculate read counts per sample 
 raw_TotalSeqs_df <- 
   archaeal_rooted_physeq %>%
@@ -134,29 +147,37 @@ raw_TotalSeqsASVs_df <-
 #View(raw_TotalSeqsASVs_df)
 
 # Plot histogram of seq depth 
-raw_TotalSeqsASVs_df %>%
+rawSeq_histogram <- 
+  raw_TotalSeqsASVs_df %>%
   ggplot(aes(x = TotalSeqs)) + 
   geom_histogram(bins = 50) + 
   scale_x_continuous(limits = c(0, 7500)) + 
-  labs(title = "Raw Seq Depth ") + 
+  labs(title = "Raw Seq Depth Histogram") + 
   theme_bw()
 
 # Plot Seq Depth versus num_ASVs
-raw_TotalSeqsASVs_df %>%
+rawSeq_vs_numASV_plot <- 
+  raw_TotalSeqsASVs_df %>%
   ggplot(aes(x = num_ASVs, y = TotalSeqs)) + 
   geom_point() + 
   scale_y_continuous(limits = c(0, 7500)) +
   geom_smooth(method = "lm") + 
-  labs(title = "Seq Depth vs # ASVs")
+  labs(title = "Seq Depth vs # ASVs") + 
+  theme_bw()
 
 # is it significant? 
 summary(lm(TotalSeqs ~ num_ASVs, data = raw_TotalSeqsASVs_df))
+
+# Put the two plots together.
+rawSeq_histogram + rawSeq_vs_numASV_plot +
+  plot_annotation(tag_levels = "A")
 ```
 
+<span style="color: red;">INTERPRETATION #2:  Evaluating the above plots, what did you scale the read counts to in your dataset? Why did you choose that number? Do you think it is sufficient to perform a beta-diversity analysis and accurately compare your data to one another?</span>
 
 # 3. Scale Read Counts 
 
-```{r scale-reads}
+```{r scale-reads, fig.width=3, fig.height=3}
 min(sample_sums(archaeal_rooted_physeq))
 
 # Scale the reads 
@@ -172,7 +193,6 @@ scaled_physeq
 #View(data.frame(otu_table(scaled_physeq)))
 
 # Confirm seq read depth of scaled_physeq 
-
 scaled_TotalSeqs_df <- 
   scaled_physeq %>%
   sample_sums() %>%
@@ -214,8 +234,11 @@ scaled_TotalSeqsASVs_df %>%
   geom_point() + 
   scale_y_continuous(limits = c(min_y, max_y)) +
   #geom_smooth(method = "lm") + 
+  theme_bw() + 
   labs(title = "Scaled: Seq Depth vs # ASVs")
 ```
+
+<span style="color: red;">INTERPRETATION #3:  Evaluating the range of the scaled read counts (and the histogram above), what did you scale the read counts to in your dataset? Why did you choose that number? Do you think it is sufficient to perform a beta-diversity analysis and accurately compare your data to one another?</span>
 
 # Beta Diversity: Dissimilarity Metrics in Microbial Ecology
 
@@ -359,7 +382,7 @@ scaled_sorensen_dist <- phyloseq::distance(scaled_physeq, method = "bray", binar
 # What does it look like? 
 class(scaled_sorensen_dist)
 str(scaled_sorensen_dist)
-head(as.matrix(scaled_sorensen_dist))
+#head(as.matrix(scaled_sorensen_dist))
 
 # Bray-Curtis Dissimiliarty
 scaled_bray_dist <- phyloseq::distance(scaled_physeq, method = "bray", binary = FALSE)
@@ -371,10 +394,12 @@ scaled_uUnifrac_dist <- phyloseq::distance(scaled_physeq, method = "unifrac")
 scaled_wUnifrac_dist <- phyloseq::distance(scaled_physeq, method = "wunifrac")
 ```
 
+<span style="color: red;">INTERPRETATION #4:  Which dissimilarity metric is most related to your scientific question? Why or why not?</span>
+
 
 # 5a. PERMANOVA: Testing Means/Centroids
 
-The goal of PERMANOVA is to ask: *Do the centroids or means differ between groups?*  
+The goal of PERMANOVA is to ask: *Do the centroids (i.e., means) differ between groups?*  
 
 **PERMANOVA** stands for **Permutational Multivariate Analysis of Variance**. It is a statistical test used in microbial ecology to determine whether the composition of microbial communities differs significantly between groups—for example, between different treatment conditions, time points, or sample types.
 
@@ -405,9 +430,11 @@ However, PERMANOVA is **sensitive to differences in within-group dispersion** (*
 | `sqrt.dist`    | Apply square-root transformation to distances     | Rarely needed; used in specific workflows                      |
 | `parallel`     | Run permutations using multiple CPU cores         | Speeds up large analyses with many permutations                |
 
-## Categorical PERMANOVA
+## Categorical & Continuous Variables in PERMANOVA
 
-For now, let's start with comparing the Sorensen and the Bray-Curtis. At the end of this file, we will work with uniweighted and weighted UniFrac. 
+`adonis2()` can also be run on continuous variables — and it’s actually a powerful way to test whether variation in microbial community composition is associated with continuous environmental or biological gradients (*e.g.,* pH, temperature, nutrient concentration, latitude, host age, etc.). In `adonis2()`, continuous variables are treated as predictors in a linear model-like framework. The test evaluates whether changes in the continuous variable are significantly associated with shifts in microbial community composition (as measured by your distance matrix).
+
+For now, we will focus on comparing the Sorensen and the Bray-Curtis. More on UniFrac soon! 
 
 ### Sorensen
 
@@ -459,6 +486,31 @@ That said, the residuals of the model are ~`r round(sorensen_station_adonis_term
 
 **Therefore, we will need to explore the role that abundance plays in shaping microbial community composition using the Bray-Curtis Dissimilarity.**
 
+### PERMANOVA: Continuous variable with Salinity 
+
+```{r PERMANOVA-sorensen-salinity}
+## Now, let's add a continuous variable. 
+sorensen_salinity_adonis_terms1 <- adonis2(scaled_sorensen_dist ~ station * date * salinity_psu, data = metadata_df, by = "terms")
+sorensen_salinity_adonis_terms1
+
+# Check different order 
+sorensen_salinity_adonis_terms2 <- adonis2(scaled_sorensen_dist ~ salinity_psu * station * date, data = metadata_df, by = "terms")
+sorensen_salinity_adonis_terms2
+```
+
+
+**In the first model** where `salinity_psu` is the final term, `salinity_psu` explains only 2.6% of the variation in community composition after accounting for station and date. Importantly, it is statistically significant (p < 0.001), so `salinity_psu` has an independent effect. *But in this model, salinity is tested after station and date, so its effect is adjusted for their contributions.*
+
+**In the second model** `salinity_psu` now explains 13.7% of the variation, which is much higher! Still `salinity_psu` is highly significant, indicating a strong association between salinity and community structure. Here, salinity is tested first, so it “gets credit” for shared variance with station and also date. 
+
+These two models together show that: 
+
+1. Salinity is clearly important (significant in both models).
+2. It likely co-varies with station and date—which makes sense in environmental data (e.g., some stations are more saline, or salinity shifts over time).
+3. When interpreting effect size, contextualize the model structure:
+    a. *Model 1:* salinity’s unique contribution
+    b. *Model 2:* salinity’s overall contribution, overlapping with other factors. 
+
 ### Bray-Curtis
 
 ```{r PERMANOVA-categorical-bray}
@@ -480,7 +532,6 @@ bray_station_adonis_margin
 
 So, as it applies to the Sorensen Dissimilarity, we can already draw a few conclusions about our data! We can state that: 
 
-
 1. **Station** is the strongest factor, explaining ~`r round(bray_station_adonis_terms1$R2[1]*100, digits = 0)`% of the variation in microbial community composition, which is statistically significant based on the p-value of <`r bray_station_adonis_terms1$"Pr(>F)"[1]`. This suggests spatial differences among stations play a major role in structuring the community.
 2. **Date** also contributes significantly (~`r round(bray_station_adonis_terms1$R2[2]*100, digits = 0)`% of variation, with a p-value of <`r bray_station_adonis_terms1$"Pr(>F)"[2]`), indicating meaningful temporal shifts in community composition across the sampling window.
 3.	The **interaction between station and date** explains an additional ~`r round(bray_station_adonis_terms1$R2[3]*100, digits = 0)`% of the variation, with a significant pvalue of <`r bray_station_adonis_terms1$"Pr(>F)"[3]`, meaning the effect of time varies across locations — i.e., community change over time is not uniform across stations.
@@ -496,6 +547,51 @@ So, as it applies to the Sorensen Dissimilarity, we can already draw a few concl
 *In other words:* 
 
 Community composition is strongly influenced by station and date in both models, but the Bray-Curtis model (abundance-based) explains more variation overall — especially for station effects. This suggests that abundance shifts, not just species turnover, play a major role in structuring microbial communities in this system over space and time.
+
+### PERMANOVA: Continuous variable with Salinity 
+
+```{r PERMANOVA-bray-salinity}
+## Now, let's add a continuous variable. 
+bray_salinity_adonis_terms1 <- adonis2(scaled_bray_dist ~ station * date * salinity_psu, data = metadata_df, by = "terms")
+bray_salinity_adonis_terms1
+
+# Check different order 
+bray_salinity_adonis_terms2 <- adonis2(scaled_bray_dist ~ salinity_psu * station * date, data = metadata_df, by = "terms")
+sorensen_salinity_adonis_terms2
+```
+
+
+**In the first model** where `salinity_psu` is the final term, `salinity_psu` explains only 3.2% of the variation in community composition after accounting for station and date, which was similar to the Sorensen results. Importantly, it is statistically significant (p < 0.001), so `salinity_psu` has an independent effect. *But in this model, salinity is tested after station and date, so its effect is adjusted for their contributions.*
+
+**In the second model** `salinity_psu` now explains ~17% of the variation, which is much higher and a similar result to the Soresen PERMANOVA! Still `salinity_psu` is highly significant, indicating a strong association between salinity and community structure. Here, salinity is tested first, so it “gets credit” for shared variance with station and also date. 
+
+These two models together show that: 
+
+1. Salinity is clearly important (significant in both models).
+2. It likely co-varies with station and date—which makes sense in environmental data (e.g., some stations are more saline, or salinity shifts over time).
+3. When interpreting effect size, contextualize the model structure:
+    a. *Model 1:* salinity’s unique contribution
+    b. *Model 2:* salinity’s overall contribution, overlapping with other factors. 
+
+
+## Salinity's role in Community Composition
+
+### Interpretation: What Does Salinity Mean Across Metrics?
+
+1.	Significant across both distance types, salinity consistently affects community composition!
+2.	Slightly higher R^2^ in Bray-Curtis indicates that salinity influences abundance patterns more than just the presence/absence measured by the Sorensen dissimilarity.
+3.	Effect size changes depending on term order:
+    - When entered first (Model 2): salinity explains more variance, capturing shared effects with station/date.
+    - When entered last (Model 1): salinity explains a smaller, unique portion of variation.
+4.	In Bray-Curtis, there’s also a significant salinity × date interaction, suggesting temporal variation in salinity’s effect on abundance (e.g., a stronger or weaker effect depending on the sampling time).
+
+
+Therefore, salinity is a major environmental driver in this system! Therefore, we can accept our hypothesis at the beginning of this file. :) Salinity's effect is robust across distance metrics (presence/absence and abundance). And, some of its influence may be shared with spatial (station) and temporal (date) structure, so term order matters. Finally, in Bray-Curtis, salinity not only affects who is present, but also how abundant they are—and its influence changes over time. 
+
+*HOWEVER, there are caveats to these conclusions... let's take a look at variance!*
+
+
+<span style="color: red;">INTERPRETATION #6: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERAMNOVA results?</span>
 
 
 # 5b. Betadisper: Testing Variances/Dispersions
@@ -535,9 +631,9 @@ The result from `permutest()` is a robust non-parametric p-value testing whether
 | `betadisper()` | Computes within-group distances to centroids (dispersion)     | ❌ No                | Distances, centroids, model object |
 | `permutest()`  | Tests if group dispersions differ using permutations          | ✅ Yes               | F-value, permutation-based p-value |
 
+## Sorensen
 
-
-```{r betadisper}
+```{r betadisper-sorensen}
 # Homogeneity of Disperson test with beta dispr
 # Sorensen Betadisper - Station 
 dispr_sorensen_station <- betadisper(scaled_sorensen_dist, metadata_df$station)
@@ -547,13 +643,42 @@ permutest(dispr_sorensen_station)
 # Sorensen Betadisper - Date  
 dispr_sorensen_date <- betadisper(scaled_sorensen_dist, metadata_df$date)
 permutest(dispr_sorensen_date)
-```
 
+# Sorensen Betadisper - Salinity psu  
+dispr_sorensen_salinity <- betadisper(scaled_sorensen_dist, metadata_df$salinity_psu)
+permutest(dispr_sorensen_salinity)
+```
 
 Interpreting `betadisper()/permutest()` results:
 
-- **Station** has a significant `betadisper()/permutest()` result. This means that we cannot 
-- **Date** does not have a significant `betadisper()/permutest()` result. Therefore We can conclude 
+**Sorensen:**
+
+- **Station** has a significant `betadisper()/permutest()` result. Therefore, we cannot conclude for certain that our PERMANOVA results are truly because of station. That said, we might expect that freshwater or saline system will have more/less dispersion for ecological reasons. Biology can also determine the dispersion. So, not all is lost! 
+- **Date** does not have a significant `betadisper()/permutest()` result. Therefore, the PERMANOVA results likely represent a true difference by date.  
+- **Salinity_psu** does not have a significant `betadisper()/permutest()` result and we can also trust that the PERMANOVA results are real. 
+
+## Bray-Curtis
+
+Now, let's test the same with Bray-Curtis!
+
+```{r betadisper-bray}
+# Bray-Curtis Betadisper - Station 
+dispr_bray_station <- betadisper(scaled_bray_dist, metadata_df$station)
+permutest(dispr_bray_station)
+
+# Bray-Curtis Betadisper - Date  
+dispr_bray_date <- betadisper(scaled_bray_dist, metadata_df$date)
+permutest(dispr_bray_date)
+
+# Bray-Curtis Betadisper - Salinity psu  
+dispr_bray_salinity <- betadisper(scaled_bray_dist, metadata_df$salinity_psu)
+permutest(dispr_bray_salinity)
+```
+
+The **Bray-Curtis** results are actually in complete agreement with the Sorensen results. So, we can draw the same conclusions that: 
+
+1. Station likely has some biological difference in the variance, which means that we need to be careful in our PERMANOVA interpretations. 
+2. salinity_psu and date both have homogeneity of variances, meaning that we can put more trust into the differences in the centroids that we discovered in the PERMANOVA results! 
 
 # Interpreting PERMANOVA with Betadisper
 
@@ -581,6 +706,11 @@ This raises the possibility that the PERMANOVA significance is at least partly d
 > Even with unequal dispersion, true ecological differences can still exist — the key is to **interpret with care** and use supporting evidence.
 
 If this happens, the results could be written something like: "*PERMANOVA indicated significant differences in microbial community composition across treatments (p < 0.001), though betadisper was also significant (p = 0.03), suggesting differences in within-group dispersion. Ordination plots showed distinct clustering of treatment centroids, supporting genuine compositional differences, though interpretations must consider potential heterogeneity in dispersion.*"
+
+
+<span style="color: red;">INTERPRETATION #7: Using the above example to guide you, run the appropriate betadisper() and permutest() for your scientific question and interpret the results. What biological conclusion can you draw from your dispersion analysis?</span>
+
+<span style="color: red;">INTERPRETATION #8: Taking into account both the betadisper()/permutest() and the PERMANOVA (adonis2()) test that you ran, what biological conclusion can you draw regarding your data?</span>
 
 
 # 6. Visualize Community Dissimilarity with Ordination
@@ -704,7 +834,9 @@ We can conclude that:
 
 1. Station is the dominant factor structuring microbial communities.
 2. Date also contributes, likely reflecting environmental or seasonal change.
-3. Bray-Curtis highlights both spatial and temporal patterns more strongly because between the two axes more variation is explained (~50%) than Sorensen (~35%), suggesting that abundance differences among taxa matter in this system. We gain ~15% of more variation explained in the data in 2 axes when incorporating abundances. 
+3. Bray-Curtis highlights both spatial and temporal patterns more strongly because between the two axes more variation is explained (~50%) than Sorensen (~35%), suggesting that abundance differences among taxa matter in this system. We gain ~15% of more variation explained in the data in 2 axes when incorporating abundances.
+
+<span style="color: red;">INTERPRETATION #9: Plot your data using a PCoA. Interpret what you can conclude from the PCoA.</span>
 
 ## 6b. NMDS: Non-Metric Multidimensional Scaling 
 
@@ -767,32 +899,24 @@ sorensen_nmds_plot + bray_nmds_plot +
   plot_annotation(tag_levels = "A")
 ```
 
-## Continuous PERMANOVA
 
-`adonis2()` can be run on continuous variables — and it’s actually a powerful way to test whether variation in microbial community composition is associated with continuous environmental or biological gradients (*e.g.,* pH, temperature, nutrient concentration, latitude, host age, etc.).
+<span style="color: red;">INTERPRETATION #10: Plot your data using NMDS. Interpret what you can conclude from the NMDS.</span>
 
-In `adonis2()`, continuous variables are treated as predictors in a linear model-like framework. The test evaluates whether changes in the continuous variable are significantly associated with shifts in microbial community composition (as measured by your distance matrix).
 
-```{r PERMANOVA-continuous}
-## 1. Run with by = terms for R² values, sensitive to order of variables! 
-## ALWAYS check and confirm the order of your terms and how they interact with each other.  
-sorensen_station_adonis_terms <- adonis2(scaled_sorensen_dist ~ station * date, data = metadata_df, by = "terms")
-sorensen_station_adonis_terms
+## All ordinations together!
 
-## 2. Run with by = "margin" for marginal p-values
-sorensen_station_adonis_margin <- adonis2(scaled_sorensen_dist ~ date * station, data = metadata_df, by = "margin")
-sorensen_station_adonis_margin
-
-# Bray-Curtis
-## ALWAYS check and confirm the order of your terms and how they interact with each other.  
-bray_station_adonis_terms <- adonis2(scaled_bray_dist ~ station * date, data = metadata_df, by = "terms")
-bray_station_adonis_terms
-
-## 2. Run with by = "margin" for marginal p-values
-bray_station_adonis_margin <- adonis2(scaled_bray_dist ~ date * station, data = metadata_df, by = "margin")
-bray_station_adonis_margin
+```{r ordinations, fig.width=7, fig.height=6}
+sorensen_pcoa_plot + bray_pcoa_plot + 
+sorensen_nmds_plot + bray_nmds_plot + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
+<span style="color: red;">INTERPRETATION #11: Plot both the PCoA and NMDS together. Which of the two visualizations work best for your data? Explain your reasoning.</span>
+
+# Now what? 
+
+Based on the results above, which metric would you use to write up your paper: Sorensen or Bray-Curtis? 
 
 # Final info for Reproducibility 
 
