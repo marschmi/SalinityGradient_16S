@@ -602,7 +602,7 @@ Therefore, salinity is a major environmental driver in this system! Therefore, w
 *HOWEVER, there are caveats to these conclusions... let's take a look at variance!*
 
 
-<span style="color: red;">INTERPRETATION #5: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERAMNOVA results?</span>
+<span style="color: red;">INTERPRETATION #5: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERMANOVA results?</span>
 
 
 # 5b. Betadisper: Testing Variances/Dispersions
