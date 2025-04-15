@@ -177,7 +177,7 @@ rawSeq_histogram + rawSeq_vs_numASV_plot +
 
 # 3. Scale Read Counts 
 
-```{r scale-reads, fig.width=3, fig.height=3}
+```{r scale-reads, fig.width=6, fig.height=3}
 min(sample_sums(archaeal_rooted_physeq))
 
 # Scale the reads 
@@ -206,9 +206,11 @@ scaled_TotalSeqsASVs_df <-
   mutate(num_ASVs = colSums(otu_table(scaled_physeq) > 1))
 
 # Plot it! 
-scaled_TotalSeqs_df %>%
+scaledSeq_histogram <- 
+  scaled_TotalSeqs_df %>%
   ggplot(aes(x = TotalSeqs)) + 
   geom_histogram(bins = 50) + 
+  labs(title = "Scaled Seq Depth Histogram") + 
   scale_x_continuous(limits = c(0, 7500)) + 
   theme_bw()
 
@@ -229,16 +231,21 @@ max_y <- max(scaled_TotalSeqs_df$TotalSeqs) + 10
 min_y <- min(scaled_TotalSeqs_df$TotalSeqs) - 10
 
 # Now, draw the plot 
-scaled_TotalSeqsASVs_df %>%
+scaledSeq_vs_numASV_plot <- 
+  scaled_TotalSeqsASVs_df %>%
   ggplot(aes(x = num_ASVs, y = TotalSeqs)) + 
   geom_point() + 
   scale_y_continuous(limits = c(min_y, max_y)) +
   #geom_smooth(method = "lm") + 
   theme_bw() + 
   labs(title = "Scaled: Seq Depth vs # ASVs")
+
+# Put the two plots together.
+scaledSeq_histogram + scaledSeq_vs_numASV_plot +
+  plot_annotation(tag_levels = "A")
 ```
 
-<span style="color: red;">INTERPRETATION #3:  Evaluating the range of the scaled read counts (and the histogram above), what did you scale the read counts to in your dataset? Why did you choose that number? Do you think it is sufficient to perform a beta-diversity analysis and accurately compare your data to one another?</span>
+<span style="color: red;">INTERPRETATION #3:  Evaluating the scaled read count plots above, what did you scale the read counts to in your dataset? Why did you choose that number? Do you think it is sufficient to perform a beta-diversity analysis and accurately compare your data to one another?</span>
 
 # Beta Diversity: Dissimilarity Metrics in Microbial Ecology
 
@@ -338,10 +345,14 @@ These dissimilarity measures are foundational tools in microbial ecology and are
 - **Type:** Abundance-based
 - **Formula:**  
   \[
-  D_{BC} = \frac{\sum_i |a_i - b_i|}{\sum_i (a_i + b_i)}
+  BC_{AB} = \frac{\sum_{k=1}^{S} \left| x_{Ak} - x_{Bk} \right|}{\sum_{k=1}^{S} \left( x_{Ak} + x_{Bk} \right)}
+
   \]
   Where:  
-  - \( a_i \), \( b_i \) are the abundances of taxon *i* in samples A and B
+  - \( BC_{AB} \): Bray-Curits dissimilarity between sample **A** and sample **B**.
+  - *S*: Total number of species or ASVs.
+  - \( x_{Ak} \): Abundance of species *k* in sample **A**  
+  - \( x_{Bk} \): Abundance of species *k* in sample **B**
 
 - **Interpretation:** Quantifies dissimilarity based on **abundance differences**—especially sensitive to changes in dominant taxa. Often, it is run together with the Sorensen-Dice dissimilarity as these two metrics are mathematically similar. 
 
@@ -591,7 +602,7 @@ Therefore, salinity is a major environmental driver in this system! Therefore, w
 *HOWEVER, there are caveats to these conclusions... let's take a look at variance!*
 
 
-<span style="color: red;">INTERPRETATION #6: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERAMNOVA results?</span>
+<span style="color: red;">INTERPRETATION #5: Using the above example to guide you, run the appropriate PERMANOVA for your scientific question and interpret the results. What biological conclusion can you draw from your PERAMNOVA results?</span>
 
 
 # 5b. Betadisper: Testing Variances/Dispersions
@@ -708,9 +719,9 @@ This raises the possibility that the PERMANOVA significance is at least partly d
 If this happens, the results could be written something like: "*PERMANOVA indicated significant differences in microbial community composition across treatments (p < 0.001), though betadisper was also significant (p = 0.03), suggesting differences in within-group dispersion. Ordination plots showed distinct clustering of treatment centroids, supporting genuine compositional differences, though interpretations must consider potential heterogeneity in dispersion.*"
 
 
-<span style="color: red;">INTERPRETATION #7: Using the above example to guide you, run the appropriate betadisper() and permutest() for your scientific question and interpret the results. What biological conclusion can you draw from your dispersion analysis?</span>
+<span style="color: red;">INTERPRETATION #6: Using the above example to guide you, run the appropriate betadisper() and permutest() for your scientific question and interpret the results. What biological conclusion can you draw from your dispersion analysis?</span>
 
-<span style="color: red;">INTERPRETATION #8: Taking into account both the betadisper()/permutest() and the PERMANOVA (adonis2()) test that you ran, what biological conclusion can you draw regarding your data?</span>
+<span style="color: red;">INTERPRETATION #7: Taking into account both the betadisper()/permutest() and the PERMANOVA (adonis2()) test that you ran, what biological conclusion can you draw regarding your data?</span>
 
 
 # 6. Visualize Community Dissimilarity with Ordination
@@ -836,7 +847,7 @@ We can conclude that:
 2. Date also contributes, likely reflecting environmental or seasonal change.
 3. Bray-Curtis highlights both spatial and temporal patterns more strongly because between the two axes more variation is explained (~50%) than Sorensen (~35%), suggesting that abundance differences among taxa matter in this system. We gain ~15% of more variation explained in the data in 2 axes when incorporating abundances.
 
-<span style="color: red;">INTERPRETATION #9: Plot your data using a PCoA. Interpret what you can conclude from the PCoA.</span>
+<span style="color: red;">INTERPRETATION #8: Plot your data using a PCoA. Interpret what you can conclude from the PCoA.</span>
 
 ## 6b. NMDS: Non-Metric Multidimensional Scaling 
 
@@ -900,7 +911,7 @@ sorensen_nmds_plot + bray_nmds_plot +
 ```
 
 
-<span style="color: red;">INTERPRETATION #10: Plot your data using NMDS. Interpret what you can conclude from the NMDS.</span>
+<span style="color: red;">INTERPRETATION #9: Plot your data using NMDS. Interpret what you can conclude from the NMDS.</span>
 
 
 ## All ordinations together!
@@ -912,7 +923,7 @@ sorensen_nmds_plot + bray_nmds_plot +
   plot_annotation(tag_levels = "A")
 ```
 
-<span style="color: red;">INTERPRETATION #11: Plot both the PCoA and NMDS together. Which of the two visualizations work best for your data? Explain your reasoning.</span>
+<span style="color: red;">INTERPRETATION #10: Plot both the PCoA and NMDS together. Which of the two visualizations work best for your data? Explain your reasoning.</span>
 
 # Now what? 
 
