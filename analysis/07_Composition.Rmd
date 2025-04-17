@@ -1,0 +1,125 @@
+---
+title: "Microbial Composition Analysis Along A Salinity Gradient"
+author: "Marian Schmidt"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Goals
+
+1. Load in scaled phyloseq object. 
+2. Calculate relative abundances of taxonomic groups at various levels: 
+    A. Phylum
+    B. Family 
+    C. Genus
+    D. ASV 
+3. Plot them, and narrow in on specific taxnomic group of interest
+
+## Inputs 
+
+1. scaled phyloseq object! 
+
+## Outputs 
+
+1. Beautiful visualizations of microbial taxa and how they vary across station/salinity.
+2. Run some stats 
+
+# Setup 
+
+```{r load-packages}
+pacman::p_load(tidyverse, devtools, phyloseq, patchwork, 
+               install = FALSE)
+
+# load colors
+source("code/colors.R")
+```
+
+
+# 1. Load in Scaled Phyloseq object 
+
+```{r load-data}
+load("data/06_Ordination/scaled_physeq.RData")
+
+# Look at the data 
+scaled_physeq
+
+# Intuition check - scaled at 1,942
+min(sample_sums(scaled_physeq))
+range(sample_sums(scaled_physeq))
+```
+
+# Taxonomic Analysis! 
+
+## Phylum 
+
+Calculate the relative abundance of the phyla across all the samples. 
+
+**NOTE!** The data MUST be normalized for this comparison. Here, we've scaled the read counts to 1,942.
+
+```{r calc-phylum-df}
+
+phylum_df <- 
+  scaled_physeq %>%
+  # Agglomerate all ASV counts within a phylum
+  tax_glom(taxrank = "Phylum") %>%
+  # Calculate the relative abundance! 
+  transform_sample_counts(function(x) {x/sum(x)}) %>%
+  # Create a dataframe from phyloseq object
+  psmelt() %>%
+  # Filter out Phyla < 1 % 
+  dplyr::filter(Abundance > 0.01) %>%
+   # fix the order of date
+  mutate(date = fct_relevel(date, c("6/2/21", "6/15/21", "10/5/21")),
+         station = fct_relevel(station, c("Copano West", "Copano East",
+                                          "Mesquite Bay", "Aransas Bay",
+                                          "Shipping Channel")))
+```
+
+
+## Stacked Bar plot 
+```{r stacked-bar-phylum}
+phylum_df %>%
+  # Individual sample comparison of surface waters, whole fraction 
+  # This will allow us to look at individual samples! 
+  dplyr::filter(depth == 0.0) %>%
+  dplyr::filter(fraction == "Whole") %>%
+  ggplot(aes(x = station, y = Abundance, fill = Phylum)) + 
+  facet_grid(Phylum~date) + 
+  # add the stacked bar 
+  geom_bar(stat = "identity", color = "black") + 
+  # change the colors to be our selected colors 
+  scale_fill_manual(values = phylum_colors)
+```
+
+# Actinomycetota 
+
+```{r phylum-actinos}
+phylum_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  ggplot(aes(x = salinity_psu, y = Abundance, color = station, fill = station))+ 
+  #geom_boxplot(alpha = 0.5, outlier.shape = NA)  + 
+  geom_point() + 
+  theme_bw() +
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  labs(title = "Actinomycetota Relative Abundance")
+
+```
+
+
+
+## Family 
+
+## Genus 
+
+## ASV 
+
+
+
+

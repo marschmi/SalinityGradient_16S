@@ -245,7 +245,7 @@ scaledSeq_histogram + scaledSeq_vs_numASV_plot +
   plot_annotation(tag_levels = "A")
 ```
 
-<span style="color: red;">INTERPRETATION #3:  Evaluating the scaled read count plots above, what did you scale the read counts to in your dataset? Why did you choose that number? Do you think it is sufficient to perform a beta-diversity analysis and accurately compare your data to one another?</span>
+<span style="color: red;">INTERPRETATION #3:  Evaluate the scaled read count plots above. Are the total number of sequences across all of your samples in the same general range? What is the minimum and maximum (i.e., the range) of the sequencing depth? How was the relationship with the number of ASVs modified after scaling the read counts?</span>
 
 # Beta Diversity: Dissimilarity Metrics in Microbial Ecology
 
