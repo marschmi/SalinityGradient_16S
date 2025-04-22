@@ -67,6 +67,9 @@ set.seed(238428)
 ```{r load-packages}
 pacman::p_load(tidyverse, phyloseq, ggtree, phytools, tidytree, phylobase,
                install = FALSE)
+
+# Load colors 
+source("code/colors.R")
 ```
 
 ## 1. Load Data files 
@@ -544,6 +547,26 @@ In the tree above, we can still see the longer branches in the dataset but we ca
 
 <span style="color: red;">INTERPRETATION #3 (If archaeal rooting): Now that you've rooted your tree, does the tree seem "finalized"? Are there any other branches/ASVs to inspect? Why or why not?</span>
 
+
+## Phylum/Class Level Tree
+
+```{r archaeal-tree-phyla}
+# Pull out the phyla names 
+rich_phyla <- 
+  archaeal_rooted_physeq %>% 
+  psmelt() %>%
+  count(Phylum) %>%
+  slice_max(order_by = n, n = 12) %>%
+  pull(Phylum)
+
+# Now, let's plot it 
+ggtree(archaeal_rooted_physeq) + 
+  geom_tippoint(aes(color = ifelse(Phylum == "Pseudomonadota", Class, 
+                                   ifelse(Phylum %in% rich_phyla, Phylum, "Rare"))), alpha = 0.9) + 
+  scale_color_manual(values = phylum_gus_colors) + 
+  labs(color = "Phylum")
+
+```
 
 ## 5b. Midpoint Root 
 

@@ -8,13 +8,13 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE)
 ```
 
 # Goals
 
-1. Load in scaled phyloseq object. 
-2. Calculate relative abundances of taxonomic groups at various levels: 
+1. Load in scaled/normalized phyloseq object. 
+2. Calculate the relative abundances of taxonomic groups at various levels: 
     A. Phylum
     B. Family 
     C. Genus
@@ -23,16 +23,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Inputs 
 
-1. scaled phyloseq object! 
+1. We will need the `scaled_physeq.RData`, which includes a rooted tree that we created in `analysis/06_Ordination/scaled_physeq.RData`. 
 
 ## Outputs 
 
-1. Beautiful visualizations of microbial taxa and how they vary across station/salinity.
-2. Run some stats 
+1. Beautiful visualizations of microbial taxa and how they vary across parameters related to our study: station (categorical) and salinity (continuous).
+2. Run some stats! 
 
 # Setup 
 
+## Load Packages 
 ```{r load-packages}
+# Load in the packages 
 pacman::p_load(tidyverse, devtools, phyloseq, patchwork, 
                install = FALSE)
 
@@ -41,7 +43,7 @@ source("code/colors.R")
 ```
 
 
-# 1. Load in Scaled Phyloseq object 
+## 1. Load in Scaled Phyloseq object 
 
 ```{r load-data}
 load("data/06_Ordination/scaled_physeq.RData")
@@ -56,14 +58,16 @@ range(sample_sums(scaled_physeq))
 
 # Taxonomic Analysis! 
 
-## Phylum 
+## A. Phylum 
 
 Calculate the relative abundance of the phyla across all the samples. 
 
-**NOTE!** The data MUST be normalized for this comparison. Here, we've scaled the read counts to 1,942.
+**NOTE #1:** The data MUST be normalized for this comparison. Here, we've scaled the read counts to 1,942.
 
-```{r calc-phylum-df}
+**NOTE #2:**
 
+```{r calc-phylum-df, }
+# Create a phylum level dataframe
 phylum_df <- 
   scaled_physeq %>%
   # Agglomerate all ASV counts within a phylum
@@ -73,43 +77,119 @@ phylum_df <-
   # Create a dataframe from phyloseq object
   psmelt() %>%
   # Filter out Phyla < 1 % 
-  dplyr::filter(Abundance > 0.01) %>%
-   # fix the order of date
+  #dplyr::filter(Abundance > 0.01) %>%
+  # fix the order of date
   mutate(date = fct_relevel(date, c("6/2/21", "6/15/21", "10/5/21")),
+         # Fix the station order 
          station = fct_relevel(station, c("Copano West", "Copano East",
                                           "Mesquite Bay", "Aransas Bay",
                                           "Shipping Channel")))
+
+
+# Make a list of phyla the top phyla 
+top10_phyla <- 
+  phylum_df %>%
+  group_by(Phylum) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  arrange(-mean_Abundance) %>%
+  head(n = 10) %>%
+  pull(Phylum)
+```
+
+## Stacked Bar plots 
+
+I'm personally against stacked bar plots because I think there are much more useful plots out there. However, most people want to plot them, show below is some code to plot it with your data. 
+
+```{r phylum-stacked-bar, fig.width=7, fig.height=3.5}
+# Stacked Bar Plot With All phyla 
+# Plot Phylum Abundances - make sure to load phylum_colors 
+phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
+  # Warning: It's important to have one sample per x value, 
+  # otherwise, it will take the sum between multiple samples
+  dplyr::filter(depth == 0.0) %>%
+  dplyr::filter(fraction == "Whole") %>%
+  ggplot(aes(x = date, y = Abundance, fill = Phylum)) + 
+  facet_grid(.~station) + 
+  geom_bar(stat = "identity", color = "black") + 
+  labs(title = "Top 10 Phyla: Surface Samples") + 
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 ```
 
 
-## Stacked Bar plot 
-```{r stacked-bar-phylum}
+## Faceted Bar plot 
+
+A plot that's still not great (in my opinion) but better than stacked bar plots is a faceted bar plot. Below, we can explore what these plots look like with the class data: 
+
+```{r phylum-facet-bar, fig.width=5, fig.height=10}
 phylum_df %>%
+  dplyr::filter(Phylum %in% top10_phyla) %>%
   # Individual sample comparison of surface waters, whole fraction 
   # This will allow us to look at individual samples! 
+  # Note that whenever plotting stacked bar plots, you should always look at Individual samples! 
   dplyr::filter(depth == 0.0) %>%
   dplyr::filter(fraction == "Whole") %>%
   ggplot(aes(x = station, y = Abundance, fill = Phylum)) + 
-  facet_grid(Phylum~date) + 
+  facet_grid(Phylum~date, scale = "free") + 
   # add the stacked bar 
   geom_bar(stat = "identity", color = "black") + 
   # change the colors to be our selected colors 
-  scale_fill_manual(values = phylum_colors)
+  scale_fill_manual(values = phylum_colors) + 
+  theme_bw() + 
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 ```
+
+
+Clearly there are some key differences in the composition of the communities above! 
+
+Phyla that "clearly" (visual eye) vary by station: 
+
+- Actinomycetota
+- Bacteroidota
+- Bdellovibrionota
+- Marinimicrobia (SAR406 clade)
+- Thermoplasmatota
+
 
 # Actinomycetota 
 
-```{r phylum-actinos}
+```{r phylum-actinomycetota, fig.width=5, fig.height=3.5}
+# Narrow in on a specific group
+# Actinomycetota - y: abundance, x: station, dot plot + boxplot
 phylum_df %>%
   dplyr::filter(Phylum == "Actinomycetota") %>%
-  ggplot(aes(x = salinity_psu, y = Abundance, color = station, fill = station))+ 
-  #geom_boxplot(alpha = 0.5, outlier.shape = NA)  + 
-  geom_point() + 
-  theme_bw() +
+  # build the plot 
+  ggplot(aes(x = station, y = Abundance, 
+             fill = station, color = station)) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Actinobacteriota Phylum Abundance") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
-  labs(title = "Actinomycetota Relative Abundance")
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
 
+
+# CONTINUOUS 
+phylum_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  # PLOT IT FIRST BEFORE ADDING THIS LINE OF CODE 
+  #dplyr::filter(salinity_psu < 25) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  geom_point(aes(color = station)) + 
+  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Actinobacteriota Phylum Abundance") + 
+  scale_color_manual(values = station_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
 ```
 
 
