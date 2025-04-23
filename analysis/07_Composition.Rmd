@@ -26,12 +26,13 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
 
 # Goals
 
+In this file, we will perform compositional analysis of our scaled/noramlized/rarefied microbial dataset! 
+
 1. Load in scaled/normalized phyloseq object. 
 2. Calculate the relative abundances of taxonomic groups at various levels: 
     A. Phylum
-    B. Family 
-    C. Genus
-    D. ASV 
+    B. Genus
+    C. ASV 
 3. Plot them, and narrow in on specific taxnomic group of interest
 
 ## Inputs 
@@ -43,12 +44,19 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
 1. Beautiful visualizations of microbial taxa and how they vary across parameters related to our study: station (categorical) and salinity (continuous).
 2. Run some stats! 
 
+# Compositional Data 
+
+Microbial abundance data—like 16S rRNA gene or metagenomics data—are typically **compositional:** they represent relative abundances constrained to a constant total (*e.g.,* percent or proportions). This introduces spurious correlations and other issues if analyzed with traditional statistics. This is a very important limitation to microbial data! 
+
+
+<span style="color: red;">INTERPRETATION #1: What are the limitations of interpreting microbial abundance from relative (aka. compositional) rather than absolute counts?</span>
+
 # Setup 
 
 ## Load Packages 
 ```{r load-packages}
 # Load in the packages 
-pacman::p_load(tidyverse, devtools, phyloseq, patchwork, 
+pacman::p_load(tidyverse, devtools, DT, phyloseq, patchwork, 
                install = FALSE)
 
 # load colors
@@ -57,6 +65,9 @@ source("code/colors.R")
 
 
 ## 1. Load in Scaled Phyloseq object 
+
+The following phyloseq object contains microbial community composition data in a standardized format. In this case, we’ve already normalized the reads (scaled to 1,942 per sample), which is essential for comparing relative abundances.
+
 
 ```{r load-data}
 load("data/06_Ordination/scaled_physeq.RData")
@@ -71,13 +82,13 @@ range(sample_sums(scaled_physeq))
 
 # Taxonomic Analysis! 
 
+In this analysis, we will drill down from phylum to ASV level analyses, which will enable increasingly detailed insights into microbial diversity and potential ecological roles. However, it is also important for us to remember that deeper levels also come with increased noise and data sparsity, especially for rare groups. 
+
 ## A. Phylum 
 
-Calculate the relative abundance of the phyla across all the samples. 
+Taxonomic analysis often begins at broader levels (*e.g.,* Phylum) to visualize overarching trends before zooming in on finer-scale patterns. This step allows us to identify which microbial groups dominate across samples and which may respond to environmental gradients like salinity.
 
-**NOTE #1:** The data MUST be normalized for this comparison. Here, we've scaled the read counts to 1,942.
-
-**NOTE #2:**
+Now, let's calculate the relative abundance of the phyla across all the samples. **NOTE:** To do this, it is imperative that we have scaled the data to a constant sequencing depth. 
 
 ```{r calc-phylum-df}
 # Create a phylum level dataframe
@@ -98,20 +109,30 @@ phylum_df <-
                                           "Mesquite Bay", "Aransas Bay",
                                           "Shipping Channel")))
 
+## What are the phylum abundances? 
+phylum_df %>%
+  group_by(Phylum) %>%
+  summarize(mean_PercAbund = round(mean(Abundance), digits = 4)) %>%
+  arrange(-mean_PercAbund) %>%
+  datatable()
 
 # Make a list of phyla the top phyla 
 top10_phyla <- 
   phylum_df %>%
   group_by(Phylum) %>%
-  summarize(mean_Abundance = mean(Abundance)) %>%
-  arrange(-mean_Abundance) %>%
+  summarize(mean_PercAbund = mean(Abundance)) %>%
+  arrange(-mean_PercAbund) %>%
   head(n = 10) %>%
   pull(Phylum)
 ```
 
+<span style="color: red;">INTERPRETATION #2: Which phyla in your dataset have the highest relative abundances? What are their abundances? We will focus on these phyla for plotting below. :)</span>
+
 ## Stacked Bar plots 
 
-I'm personally against stacked bar plots because I think there are much more useful plots out there. However, most people want to plot them, show below is some code to plot it with your data. 
+Visualization helps detect patterns in composition and abundance that statistical models may later test. Stacked bar plots are often used but can obscure individual sample variation and visualize too much data all at once. 
+
+Therefore, we will also explore faceted and jittered boxplots below the bar plots to see sample-level trends more clearly.
 
 ```{r phylum-stacked-bar, fig.width=9, fig.height=3.5}
 # Stacked Bar Plot With All phyla 
@@ -134,7 +155,7 @@ phylum_df %>%
 
 ## Faceted Bar plot 
 
-A plot that's still not great (in my opinion) but better than stacked bar plots is a faceted bar plot. Below, we can explore what these plots look like with the class data: 
+To help compare the phylum abundance between sample types, we can facet by phylum to better see how the changes occur across the stations, which is masked in the stacked bar plot. It's a little better than the stacked bar plot, however, we can do even better! 
 
 ```{r phylum-facet-bar, fig.width=5, fig.height=12}
 phylum_df %>%
@@ -171,7 +192,7 @@ phylum_df %>%
         axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 ```
 
-Let's collapse all the data into a single plot 
+
 
 ```{r plot-phylum-station, fig.width=12, fig.height=6}
 ### Or combined together: 
@@ -191,23 +212,35 @@ phylum_df %>%
 ```
 
 
-Clearly there are some key differences in the composition of the communities above! 
+Microbial community composition varied markedly across the estuarine salinity gradient! Specifically, several phyla display clear spatial structuring, which is exciting. This figure highlights strong phylum-level ecological filtering across salinity gradients, with Actinomycetota and Cyanobacteriota showing the most pronounced spatial turnover. Pseudomonadota and Bacteroidota appear more ubiquitous, while other groups reflect niche partitioning or rare biosphere dynamics.
 
-Phyla that "clearly" (visual eye) vary by station: 
+Some specific results: 
+
+- **Actinomycetota** exhibited a pronounced decrease in abundance from low-salinity stations (Copano West & East) to high-salinity stations (Aransas Bay & Shipping Channel), consistent with freshwater specialization.
+- **Cyanobacteriota** showed peak relative abundance at intermediate salinity sites (Mesquite and Aransas Bays), with declines at both ends of the gradient. This suggests niche partitioning of cyanobacterial taxa along the salinity continuum.
+- **Pseudomonadota** (formerly Proteobacteria, especially Gammaproteobacteria) were consistently dominant across all sites but showed considerable variability, potentially reflecting their broad metabolic versatility and adaptation to a range of environmental conditions.
+- **Bacteroidota** maintained moderate levels across stations, with a slight increase at higher-salinity sites, suggesting adaptation to more marine-like conditions.
+- **Bdellovibrionota, Planctomycetota, and the Marine Group II (MGII) archaea** displayed more subtle or patchy spatial patterns, with generally low relative abundances and variable presence across stations.
+- **Verrucomicrobiota** and **Thermoplasmatota** were relatively low in abundance overall but showed site-specific spikes—Thermoplasmatota notably increased in the Shipping Channel, potentially indicating a halotolerant or halophilic lineage.
+- **SAR406 (Marinimicrobia) and **Crenarchaeota (if mis-labeled as Thermoplasmatota) showed sharp increases in specific stations, suggesting localized blooms or niche specialization.
+    - Note that Marine Group I, once considered Crenarchaeota, were reclassified into the Thaumarchaeota based on 16S rRNA and genomic data.
+
+After initial exploration, we focus on specific phyla that appear to vary across stations or with salinity. These targeted plots help develop hypotheses about ecological drivers.
 
 - Actinomycetota
+- Cyanobacteriota
+- Verrucomicrobiota
 - Bacteroidota
-- Bdellovibrionota
-- Marinimicrobia (SAR406 clade)
-- Thermoplasmatota
 
+<span style="color: red;">INTERPRETATION #3: Make the above dotplot and boxplot for your sample types and your most abundant phyla. What *initial* conclusions can you draw regarding the sampled microbial communities as it relates to your scientific question?</span>
 
-# Actinomycetota 
+### A1. Actinomycetota 
 
-```{r phylum-actinomycetota, fig.width=5, fig.height=3.5}
+```{r phylum-actinos, fig.width=7, fig.height=3.5}
 # Narrow in on a specific group
 # Actinomycetota - y: abundance, x: station, dot plot + boxplot
-phylum_df %>%
+actino_phylum_station <- 
+  phylum_df %>%
   dplyr::filter(Phylum == "Actinomycetota") %>%
   # build the plot 
   ggplot(aes(x = station, y = Abundance, 
@@ -215,7 +248,7 @@ phylum_df %>%
   geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Actinobacteriota Phylum Abundance") + 
+  labs(title = "Actinomycetota Phylum") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
     theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
@@ -225,37 +258,47 @@ phylum_df %>%
 
 
 # CONTINUOUS 
-phylum_df %>%
+actino_phylum_salinity <- 
+  phylum_df %>%
   dplyr::filter(Phylum == "Actinomycetota") %>%
-  # PLOT IT FIRST BEFORE ADDING THIS LINE OF CODE 
-  #dplyr::filter(salinity_psu < 25) %>%
-  # build the plot 
   ggplot(aes(x = salinity_psu, y = Abundance)) + 
   geom_point(aes(color = station)) + 
   theme_bw() + 
   geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
-  labs(title = "Actinobacteriota Phylum Abundance") + 
+  labs(title = "Actinomycetota Phylum") + 
   scale_color_manual(values = station_colors) + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-          legend.position = "right")
+  theme(legend.position = "none")
+
+# Collect both of the plots together into one 
+actino_phylum_station + actino_phylum_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
+**Actinomycetota Abundance Across Stations and Salinity**
 
-### Actinomycetota 
+A. Actinomycetota relative abundance is highest in low-salinity stations (Copano West and East) and steadily declines moving toward more marine stations (Aransas Bay and Shipping Channel).
+B. Abundance shows a strong negative relationship with salinity, consistent with a freshwater preference. This taxon appears to be sensitive to increasing salinity, with almost no presence in high-salinity samples.
 
-```{r phylum-station-actinomycetota, fig.width=5, fig.height=3.5}
+Actinomycetes are Gram-positive bacteria known for decomposing complex organic matter, especially in soils and freshwater systems. Their decline with increasing salinity suggests sensitivity to osmotic stress and highlights their role in freshwater nutrient cycling and carbon turnover.
+
+### A2. Cyanobacteriota 
+
+```{r phylum-cyanos, fig.width=7, fig.height=3.5}
 # Narrow in on a specific group
-# Actinomycetota - y: abundance, x: station, dot plot + boxplot
+# Cyanobacteriota - y: abundance, x: station, dot plot + boxplot
 
-phylum_df %>%
+# Plot by station 
+cyano_phylum_station <- 
+  phylum_df %>%
   dplyr::filter(Phylum == "Cyanobacteriota") %>%
-  # build the plot 
   ggplot(aes(x = station, y = Abundance, 
              fill = station, color = station)) + 
-  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Cyanobacteriota Phylum Abundance") + 
+  labs(title = "Cyanobacteriota Phylum") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
     theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
@@ -264,82 +307,151 @@ phylum_df %>%
 # These are non-parametric (non-normal) stat tests 
 
 # CONTINUOUS 
-phylum_df %>%
+cyano_phylum_salinity <- 
+  phylum_df %>%
   dplyr::filter(Phylum == "Cyanobacteriota") %>%
   # build the plot 
   ggplot(aes(x = salinity_psu, y = Abundance)) + 
   geom_point(aes(color = station, shape = date)) + 
   theme_bw() + 
   geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
-  labs(title = "Cyanobacteriota Phylum Abundance") + 
+  labs(title = "Cyanobacteriota Phylum") + 
   scale_color_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "none")
+
+# Collect the Cyanobacteriota Plots
+cyano_phylum_station + cyano_phylum_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+
+**Cyanobacteriota Abundance Across Stations and Salinity**
+
+A. Cyanobacteriota relative abundance varies across estuarine stations, with generally higher median abundances observed in mid-salinity environments (*e.g.,* Mesquite and Aransas Bays) compared to the more freshwater (Copano) and marine-influenced (Shipping Channel) sites.
+B. When plotted against salinity, Cyanobacteriota abundance follows a unimodal (hump-shaped) trend, peaking around intermediate salinity values (~15 PSU). This suggests that Cyanobacteriota in this system may be best adapted to brackish conditions.
+
+Cyanobacteria are globally important primary producers, contributing significantly to oxygen production and carbon cycling. In estuaries, they often dominate in brackish waters and include both free-living and bloom-forming taxa. Their response to salinity helps indicate shifts in primary production potential and trophic dynamics.
+
+### A3. Verrucomicrobiota
+
+```{r phylum-verrucos, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Verrucomicrobiota - y: abundance, x: station, dot plot + boxplot
+
+# Plot by station 
+verruco_phylum_station <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Verrucomicrobiota") %>%
+  ggplot(aes(x = station, y = Abundance, 
+             fill = station, color = station)) + 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Verrucomicrobiota Phylum") + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
           legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
+
+# CONTINUOUS 
+verruco_phylum_salinity <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Verrucomicrobiota") %>%
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  geom_point(aes(color = station, shape = date)) + 
+  theme_bw() + 
+  geom_smooth(method = "lm") + 
+  labs(title = "Verrucomicrobiota Phylum") + 
+  scale_color_manual(values = station_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "none")
+
+# Collect the Verrucomicrobiota Plots
+verruco_phylum_station + verruco_phylum_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
 
+**Verrucomicrobiota Abundance Across Stations and Salinity**
 
-## Family
-```{r family-composition, fig.width=10, fig.height=4}
-# Calculate the Family relative abundance 
-# Note: The read depth MUST be normalized in some way: scale_reads
-family_df <- 
-  scaled_physeq %>%
-  # agglomerate at the phylum level 
-  tax_glom(taxrank = "Family") %>% 
-  # Transform counts to relative abundance 
-  transform_sample_counts(function (x) {x/sum(x)}) %>%
-  # Melt to a long format 
-  psmelt() %>%
-  # Filter out Phyla that are <1% - get rid of low abundant Phyla
-  dplyr::filter(Abundance > 0.01) %>%
-  # fix the order of date
-  mutate(date = fct_relevel(date, c("6/2/21", "6/15/21", "10/5/21")),
-         station = fct_relevel(station, c("Copano West", "Copano East",
-                                          "Mesquite Bay", "Aransas Bay",
-                                          "Shipping Channel")))
-# Check family_df
-#str(family_df)
+A. Verrucomicrobiota are most abundant in lower salinity sites (Copano West and East) and show a decreasing trend in abundance toward more saline stations (Shipping Channel).
+B. There is a clear negative correlation between Verrucomicrobiota abundance and salinity, suggesting this phylum may prefer fresher conditions and is less competitive in higher salinity environments.
 
-# Plot family 
-# Actinobacteriota Families 
-family_df %>%
-  dplyr::filter(Phylum == "Actinomycetota") %>%
-  # build the plot 
+This diverse phylum is often associated with polysaccharide degradation and has been found in soils, freshwater, and marine systems. In estuarine environments, their presence in low salinity zones suggests a role in terrestrial or freshwater organic matter processing.
+
+### A4. Bacteroidota
+
+```{r phylum-bacteroidota, fig.width=7, fig.height=3.5}
+# Narrow in on a specific group
+# Bacteroidota - y: abundance, x: station, dot plot + boxplot
+
+# Plot by station 
+bacteroidota_phylum_station <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacteroidota") %>%
   ggplot(aes(x = station, y = Abundance, 
              fill = station, color = station)) + 
-  facet_wrap(.~Family, scales = "free_y", nrow = 1) + 
-  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  # outliers not plotted here in boxplot 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Actinomycetota Family Abundance") + 
+  labs(title = "Bacteroidota Phylum") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
-```
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          legend.position = "right")
+# Statistically: Kruskall-Wallis followed by a Tukey's Posthoc test
+# These are non-parametric (non-normal) stat tests 
 
-```{r plot-cyano-families, fig.width=8, fig.height=4}
-# Plot family 
-family_df %>%
-  dplyr::filter(Phylum == "Cyanobacteriota") %>%
+# CONTINUOUS 
+bacteroidota_phylum_salinity <- 
+  phylum_df %>%
+  dplyr::filter(Phylum == "Bacteroidota") %>%
   # build the plot 
-  ggplot(aes(x = station, y = Abundance, 
-             fill = station, color = station)) + 
-  facet_wrap(.~Family, scales = "free_y", nrow = 1) + 
-  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
-  geom_jitter() + 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  geom_point(aes(color = station, shape = date)) + 
   theme_bw() + 
-  labs(title = "Cyanobacteriota Family Abundance") + 
+  geom_smooth(method = "lm") + 
+  labs(title = "Bacteroidota Phylum") + 
   scale_color_manual(values = station_colors) + 
-  scale_fill_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+          legend.position = "none")
+
+# Collect the Bacteroidota Plots
+bacteroidota_phylum_station + bacteroidota_phylum_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
+**Bacteroidota Abundance Across Stations and Salinity**
 
-## Genus
-```{r genus-plots, fig.width=12, fig.height=4}
+A. Unlike the other phyla, Bacteroidota relative abundance increases along the estuarine salinity gradient, with the highest levels observed in the most marine-influenced site (Shipping Channel).
+B. Abundance shows a strong positive correlation with salinity, indicating this phylum may be better adapted to marine or higher-salinity conditions, and potentially involved in degradation of organic matter under saline conditions.
+
+Members of Bacteroidota are prominent degraders of high-molecular-weight organic matter such as proteins and polysaccharides. Their increasing abundance with salinity implies they may be key players in coastal and marine carbon cycling, especially in environments rich in organic particles.
+
+### Phylum Summary 
+
+| Phylum             | Salinity Trend         | Peak/Preference              | Interpretation                                                                 |
+|--------------------|------------------------|------------------------------|---------------------------------------------------------------------------------|
+| **Cyanobacteriota** | Unimodal (hump-shaped) | Brackish (~15 PSU)          | Thrives in intermediate salinity; may be adapted to estuarine conditions.       |
+| **Actinomycetota**  | Negative               | Freshwater (low salinity)   | Strongly freshwater-associated; declines with increasing salinity.              |
+| **Verrucomicrobiota** | Negative             | Freshwater (low salinity)   | More abundant in low-salinity environments; possibly outcompeted in saline sites.|
+| **Bacteroidota**    | Positive               | Marine (high salinity)      | Increases with salinity; likely involved in marine organic matter degradation.   |
+
+<span style="color: red;">INTERPRETATION #4: Based on these phylum-level analyses, were there any phyla that you were able to identify to focus on moving forward for deeper taxonomic analyses? Why?</span>
+
+## B. Genus
+
+Let's first calculate the genus data frame. 
+
+```{r genus-actino-plots, fig.width=12, fig.height=4}
 # Calculate the Family relative abundance 
 # Note: The read depth MUST be normalized in some way: scale_reads
 genus_df <- 
@@ -350,21 +462,24 @@ genus_df <-
   transform_sample_counts(function (x) {x/sum(x)}) %>%
   # Melt to a long format 
   psmelt() %>%
-  # Filter out Phyla that are <1% - get rid of low abundant Phyla
-  dplyr::filter(Abundance > 0.01) %>%
-  # fix the order of date
+  # Fix the order of date
   mutate(date = fct_relevel(date, c("6/2/21", "6/15/21", "10/5/21")),
          station = fct_relevel(station, c("Copano West", "Copano East",
                                           "Mesquite Bay", "Aransas Bay",
                                           "Shipping Channel")))
+```
 
 
+### B1. Actinomycetota Genera 
+
+```{r actino-genus, fig.width=6, fig.height=6}
 # Actinobacteriota
 # Plot genus 
-genus_df %>%
+actino_genus_station <- 
+  genus_df %>%
   dplyr::filter(Phylum == "Actinomycetota") %>%
-  #dplyr::filter(Family == "Sporichthyaceae") %>%
-  #dplyr::filter(Genus == "hgcI clade") %>%
+  # At first, plot all of the genera and then subset the ones that have intersting trends
+  dplyr::filter(Genus %in% c("hgcI clade", "CL500-29 marine group")) %>%
   # build the plot 
   ggplot(aes(x = station, y = Abundance, 
              fill = station, color = station)) + 
@@ -372,15 +487,62 @@ genus_df %>%
   geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Actinomycetota hgc1 Genus Abundance") + 
+  labs(title = "Actinomycetota Genera") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+        legend.position = "none")
 
-# Cyanobacteriota 
-# Plot genus 
-genus_df %>%
+# Plot genus: Continuous 
+actino_genus_salinity <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  dplyr::filter(Genus %in% c("hgcI clade", "CL500-29 marine group")) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Actinomycetota Genera") + 
+  scale_color_manual(values = station_colors) + 
+  theme(legend.position = "none")
+
+# Collect the Actinomycetota Plots
+actino_genus_station / actino_genus_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+**Genera-Level Response of Actinomycetota to Station and Salinity**
+
+This figure shows the relative abundance of two dominant Actinomycetota genera—CL500-29 marine group and hgcI clade—across estuarine stations (A) and a salinity gradient (B).
+
+1. **CL500-29 marine group** exhibits a moderate negative correlation with salinity. While present across all stations, its abundance is highest at low-salinity sites (Copano West and East) and gradually decreases toward marine-influenced sites. This suggests it may be a freshwater-to-brackish adapted taxon, sensitive to higher salinities.
+2. **hgcI clade** shows a steep decline in abundance with increasing salinity, with high relative abundance in low-salinity stations and almost complete absence beyond 15 PSU. This genus appears to be a strong freshwater specialist, intolerant of salinity increases, making it a potential bioindicator of freshwater influence in estuarine systems. *However, note the highly variable abundances at lower salinity. We need to be mindful of the stats here!* 
+
+These patterns reinforce the role of salinity as a key environmental filter in structuring Actinomycetota populations and suggest functional or physiological constraints that limit these genera to distinct salinity niches.
+
+### B2. Cyanobacteriota Genera 
+
+Let's take a look at two important and very abundant Cyano Genera: 
+
+1. **Cyanobium PCC-6307**
+    - Widespread in freshwater and brackish systems, including lakes, estuaries, and rivers.
+    - Small, unicellular, coccoid
+    - Typically contain phycocyanin (not phycoerythrin), giving them a bluish-green color
+2. **Synechococcus CC9902**: 
+    - Rod-shaped or coccoid, ~1 µm
+    - Contains phycoerythrin (orange-pink color), adapted to absorb blue-green light in the open ocean
+    - Synechococcus is among the most abundant photoautotrophs in the ocean, contributing up to 10–20% of marine primary production.
+    - CC9902 is frequently used as a model for:
+    - Population structure and ecotype
+    - Viral-host interactions (cyanophages)
+    - Adaptive evolution in picocyanobacteria
+
+```{r cyano-genus, fig.width=6, fig.height=6}
+# Plot genus: Categorical
+cyano_genus_station <- 
+  genus_df %>%
   dplyr::filter(Phylum == "Cyanobacteriota") %>%
   dplyr::filter(Genus %in% c("Cyanobium PCC-6307", "Synechococcus CC9902")) %>%
   # build the plot 
@@ -394,27 +556,50 @@ genus_df %>%
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+        legend.position = "none")
+
+# Plot genus: Continuous 
+cyano_genus_salinity <- 
+  genus_df %>%
+  dplyr::filter(Phylum == "Cyanobacteriota") %>%
+  dplyr::filter(Genus %in% c("Cyanobium PCC-6307", "Synechococcus CC9902")) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  facet_wrap(.~Genus, scales = "free_y", nrow = 1) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Cyanobacteriota Genus Abundance") + 
+  scale_color_manual(values = station_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Collect the Cyanobacteriota Plots
+cyano_genus_station / cyano_genus_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
 
-**Cyanobium PCC-6307**
+**Genus-Level Response of Cyanobacteriota to Salinity**
 
-- Widespread in freshwater and brackish systems, including lakes, estuaries, and rivers.
-- Small, unicellular, coccoid
-- Typically contain phycocyanin (not phycoerythrin), giving them a bluish-green color
+The above figure displays how two cyanobacterial genera—Cyanobium PCC-6307 and Synechococcus CC9902—respond to a continuous salinity gradient across estuarine environments. We can conclude that: 
 
-**Synechococcus CC9902**: 
+1. **Cyanobium PCC-6307** shows a clear unimodal response, peaking at intermediate salinities (~15 PSU). This genus is abundant in brackish waters, indicating it may be well-adapted to estuarine mixing zones where freshwater and marine influences converge. Its decline at both low and high salinities suggests physiological limits at environmental extremes.
+2. **Synechococcus CC9902** shows a strong positive relationship with salinity, with relative abundance increasing sharply in higher-salinity waters. This pattern is consistent with its role as a marine-adapted picocyanobacterium, commonly found in open ocean environments. Its abundance in high-salinity sites highlights niche differentiation between freshwater/brackish and marine cyanobacterial clades. However, it's important to note that there is a large amount of variability in the most saline samples. 
 
-- Rod-shaped or coccoid, ~1 µm
-- Contains phycoerythrin (orange-pink color), adapted to absorb blue-green light in the open ocean
-- Synechococcus is among the most abundant photoautotrophs in the ocean, contributing up to 10–20% of marine primary production.
-- CC9902 is frequently used as a model for:
-    - Population structure and ecotype
-    - Viral-host interactions (cyanophages)
-    - Adaptive evolution in picocyanobacteria
+Together, these patterns illustrate niche partitioning within Cyanobacteriota along environmental gradients and emphasize how salinity acts as a strong ecological filter shaping microbial community composition at fine taxonomic resolution.
 
-## ASV level
+<span style="color: red;">INTERPRETATION #5: Please make some plots of mid-level taxonomic ranks (e.g. Genus, Family, Order) as it relates to your scientific question. Were there any changes in the mid-level taxonomic trends compared to the phylum-level results? What does that tell you about that taxonomic group?</span>
+
+## C. ASV level
+
+Now, let's take a look at the ASVs. This is where the *real* ecology/biology happens! This is because the ASV-level plots will provide us with a more detailed view of **which specific taxa (ASVs) are driving the overall trends seen at the higher taxonomic levels (e.g. phylum)** in relation to salinity gradients and station differences.
+
+Before we calculate the ASV-level abundances, let's take a second to think about *who* we'd like to consider. There's a lot of ASVs! In fact, there are `r ntaxa(scaled_physeq)`! It is difficult analyze all of them! Therefore, we will remove ASVs that have an overall count across the entire dataset of 196 or 1% of a scaled sample to 1962. This is a little arbitrary and therefore, you may choose a different threshold for your dataset. The goal here is to **dramatically decreases the number of ASVs in the dataset** to help make the ASV-level data analysis much easier. 
+
+Of course, if we had more time in class, we could run differential abundance and this would also help us to identify and statistically test which ASVs are important and also help us narrow on specific ASVs. 
+
+The goal with this lesson is to do some data exploration and then also test ASVs that are relevant for our specific study. Let's go! 
 
 ```{r ASV-plots, fig.width=12, fig.height=4}
 # Calculate the Family relative abundance 
@@ -435,62 +620,245 @@ ASV_df <-
          station = fct_relevel(station, c("Copano West", "Copano East",
                                           "Mesquite Bay", "Aransas Bay",
                                           "Shipping Channel")))
+```
 
+### C1. Actinomycetota ASVs 
+
+```{r actino-asvs, fig.width=6, fig.height=8}
+# Calculate top couple of ASVs 
+# Make a list of phyla the top phyla 
+top_actino_ASVs <- 
+  ASV_df %>%
+  dplyr::filter(Phylum == "Actinomycetota") %>%
+  group_by(ASV) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  dplyr::filter(mean_Abundance > 0.005) %>%
+  pull(ASV)
 
 # Actinobacteriota
-# Plot genus 
-ASV_df %>%
-  dplyr::filter(Phylum == "Actinomycetota") %>%
-  dplyr::filter(Genus == "hgcI clade") %>%
+# Plot ASVs 
+actino_asv_station <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_actino_ASVs) %>%
   # build the plot 
   ggplot(aes(x = station, y = Abundance, 
              fill = station, color = station)) + 
-  facet_wrap(.~ASV, scales = "free_y", nrow = 2) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
   geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Actinomycetota hgc1 Genus Abundance") + 
+  labs(title = "Actinomycetota ASVs") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+        legend.position = "none")
 
-# Cyanobacteriota 
-# Plot genus 
-ASV_df %>%
+# Plot ASVs: Continuous 
+actino_asv_salinity <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_actino_ASVs) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Actinomycetota ASVs") + 
+  scale_color_manual(values = station_colors) + 
+  theme(legend.position = "none")
+
+# Collect the Actinomycetota Plots
+actino_asv_station / actino_asv_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+The Actinomycetota phylum-level pattern of an abundance decline with salinity is **not driven by a single taxon**, but rather reflects a consistent pattern across multiple ASVs, most of which show monotonic or sharply declining abundance across increasing salinity. This points to a shared sensitivity to salinity within this group, likely shaping their distribution in estuarine gradients.
+
+
+A. **Relationship to Station:** 
+    - All dominant ASVs are most abundant at low-salinity sites (Copano West and East).
+    - Most ASVs decline dramatically across the salinity gradient, especially in Aransas Bay and the Shipping Channel.
+B. **Relationship to Salinity:** 
+    - ASV_0006 and ASV_0048 (hgcl clade) show a strong negative relationship with salinity—nearly disappearing at salinities >20 PSU.
+    - ASV_0017 (Candidatus Aquiluna) shows a slight unimodal response, peaking at mid-range salinities but still declining overall.
+    - ASV_0028 (ML602J-51) also follows a clear negative trend, matching the phylum-level pattern.
+
+**Some interpretations**
+
+- Actinomycetota are sensitive to salinity increases and appear to be outcompeted or physiologically excluded in higher-salinity environments.
+- The phylum-level decline is driven by multiple ASVs, most notably within the hgcl clade and Candidatus Aquiluna, which dominate at low salinity and decline sharply as salinity rises.
+- This contrasts with Cyanobacteriota (below), where some ASVs increase in high salinity (e.g., Synechococcus), suggesting different ecological tolerances and niche strategies.
+
+
+### C2. Cyanobacterial ASVs
+
+Let's narrow in on more abundant ASVs by removing any ASVs that are less than 0.5% abundance. Otherwise there were many ASVs in this group!
+
+```{r cyano-asvs, fig.width=10, fig.height=8}
+# Calculate top couple of ASVs 
+# Make a list of phyla the top phyla 
+top_cyano_ASVs <- 
+  ASV_df %>%
   dplyr::filter(Phylum == "Cyanobacteriota") %>%
-  dplyr::filter(Genus %in% c("Cyanobium PCC-6307", "Synechococcus CC9902")) %>%
+  group_by(ASV) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  dplyr::filter(mean_Abundance > 0.005) %>%
+  pull(ASV)
+
+# Plot ASVs: Station 
+cyano_asv_station <- 
+  ASV_df %>%
+  # Subset for more abundant ASVs
+  dplyr::filter(ASV %in% top_cyano_ASVs) %>%
   # build the plot 
   ggplot(aes(x = station, y = Abundance, 
              fill = station, color = station)) + 
-  facet_wrap(Genus~ASV, scales = "free_y", nrow = 3) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
   geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
   geom_jitter() + 
   theme_bw() + 
-  labs(title = "Cyanobacteriota Genus Abundance") + 
+  labs(title = "Cyanobacteriota ASVs > 0.05%") + 
   scale_color_manual(values = station_colors) + 
   scale_fill_manual(values = station_colors) + 
   theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+        legend.position = "none")
+
+# Plot ASVs: Continuous 
+cyano_asv_salinity <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_cyano_ASVs) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Cyanobacteriota ASVs > 0.05%") + 
+  scale_color_manual(values = station_colors) + 
+  theme(legend.position = "none")
+
+# Collect the Actinomycetota Plots
+cyano_asv_station / cyano_asv_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
+```
+
+Ok, this is interesting! While the phylum-level plot shows a clear unimodal relationship with salinity, the ASV-level analysis reveals taxon-specific responses, with Cyanobium peaking at moderate salinity and Synechococcus increasing with high salinity. This suggests differential adaptation strategies and niche differentiation within Cyanobacteriota in response to salinity gradients.
+
+A. **Relationship to Station:** This spatial pattern reinforces the environmental filtering hypothesis, where salinity selects for different cyanobacterial taxa. 
+    - Shipping Channel, the site with the highest salinity, a spike in Synechococcus ASVs and a concomitant decline or absence of many Cyanobium ASVs
+    - Copano West/East, with lower salinities, are dominated by Cyanobium ASVs
+B. **Relationship to Salinity**: Salinity shapes niche partitioning among Cyanobacteria! Overall, Cyanobium ASVs tend to dominate lower to intermediate salinity zones and Synechococcus ASVs tend to increase in higher salinity environments, such as the Shipping Channel. Specifically: 
+    - Several ASVs (e.g., ASV_0001, ASV_0002, both Cyanobium) follow a unimodal trend, peaking at intermediate salinity (~15–20 PSU)—mirroring the phylum-level curve.
+    - Synechococcus ASVs (e.g., ASV_0005, ASV_0025) show increasing abundance with higher salinity, suggesting they are more halotolerant or marine-adapted.
+    - Some Cyanobium ASVs (e.g., ASV_0012, ASV_0043) show declines at high salinity.
+
+
+
+<span style="color: red;">INTERPRETATION #6: Were the most abundant ASVs in your dataset represented in your ASV-level plots? If not, please go back and plot them specifically. (Hint: Remember that we ordered our ASV names by abundance across the entire dataset. Therefore, ASV_0001 will be the most abundant, ASV_0007 will be the 7th most abundant and so on.)</span>
+
+<span style="color: red;">INTERPRETATION #7: Please make some plots at the ASV level as it relates to your scientific question. Were there any ASVs that were especially related to trends that you saw? Did a specific phylogenetic group all show the same trends (e.g. like the Actinomycetota ASVs above)? Or did the ASVs have various, likely niche-specific responses (similar to the Cyanobacteriota above)??</span>
+
+<span style="color: red;">INTERPRETATION #8: Now, do a quick literature or google search and look back in the paper that you may be replicating (if applicable). Does your ASV-level changes represent something that is currently known? Or is this a novel result? What did you learn about this ASV or a group of ASVs in your dataset?</span>
+
+### C3. Verrucomicrobiota 
+
+```{r verruco-asvs, fig.width=4, fig.height=4.5}
+# Calculate top couple of ASVs 
+# Make a list of phyla the top phyla 
+top_verruco_ASVs <- 
+  ASV_df %>%
+  dplyr::filter(Phylum == "Verrucomicrobiota") %>%
+  group_by(ASV) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  dplyr::filter(mean_Abundance > 0.005) %>%
+  pull(ASV)
+
+# Plot ASVs: Station 
+verruco_asv_station <- 
+  ASV_df %>%
+  # Subset for more abundant ASVs
+  dplyr::filter(ASV %in% top_verruco_ASVs) %>%
+  # build the plot 
+  ggplot(aes(x = station, y = Abundance, 
+             fill = station, color = station)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 1) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Verrucomicrobiota ASVs > 0.05%") + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Plot ASVs: Continuous 
+verruco_asv_salinity <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_verruco_ASVs) %>%
+  # build the plot 
+  ggplot(aes(x = salinity_psu, y = Abundance)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 1) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Verrucomicrobiota ASVs > 0.05%") + 
+  scale_color_manual(values = station_colors) + 
+  theme(legend.position = "none")
+
+# Collect the Actinomycetota Plots
+verruco_asv_station / verruco_asv_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
 
-### Focus on Cyanos 
+### C4. Bacteroidota 
 
-```{r plot-cyanoASVs}
-ASV_df %>%
-  dplyr::filter(Phylum == "Cyanobacteriota") %>%
-  dplyr::filter(ASV %in% c("ASV_0001", "ASV_0002", "ASV_0025")) %>%
+```{r bacter-asvs, fig.width=10, fig.height=8}
+# Calculate top couple of ASVs 
+# Make a list of phyla the top phyla 
+top_bacter_ASVs <- 
+  ASV_df %>%
+  dplyr::filter(Phylum == "Bacteroidota") %>%
+  group_by(ASV) %>%
+  summarize(mean_Abundance = mean(Abundance)) %>%
+  dplyr::filter(mean_Abundance > 0.005) %>%
+  pull(ASV)
+
+# Plot ASVs: Station 
+bacter_asv_station <- 
+  ASV_df %>%
+  # Subset for more abundant ASVs
+  dplyr::filter(ASV %in% top_bacter_ASVs) %>%
+  # build the plot 
+  ggplot(aes(x = station, y = Abundance, 
+             fill = station, color = station)) + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) + # outliers not plotted here in boxplot 
+  geom_jitter() + 
+  theme_bw() + 
+  labs(title = "Bacteroidota ASVs > 0.05%") + 
+  scale_color_manual(values = station_colors) + 
+  scale_fill_manual(values = station_colors) + 
+  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+        legend.position = "none")
+
+# Plot ASVs: Continuous 
+bacter_asv_salinity <- 
+  ASV_df %>%
+  dplyr::filter(ASV %in% top_bacter_ASVs) %>%
   # build the plot 
   ggplot(aes(x = salinity_psu, y = Abundance)) + 
-  facet_wrap(Genus~ASV, scales = "free_y") + 
-  geom_point(aes(color = station)) +  
-  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) +
-  theme_bw() + 
-  labs(title = "Cyanobacteriota Genus Abundance") + 
+  facet_wrap(Genus~ASV, scales = "free_y", nrow = 2) + 
+  geom_point(aes(color = station)) +  theme_bw() + 
+  geom_smooth(method = "lm",  formula = y ~ poly(x, 2)) + 
+  labs(title = "Bacteroidota ASVs > 0.05%") + 
   scale_color_manual(values = station_colors) + 
-  theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
-        legend.position = "bottom")
+  theme(legend.position = "none")
+
+# Collect the Actinomycetota Plots
+bacter_asv_station / bacter_asv_salinity + 
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = "A")
 ```
 
 
